@@ -2,7 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 .env
-.streamlit/
 data/neurogolf-2026/
 memory/neurogolf_state.json
 memory/operator_note.txt
