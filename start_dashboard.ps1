@@ -1,5 +1,6 @@
 param(
     [int]$Port = 8501,
+    [string]$BindAddress = "0.0.0.0",
     [switch]$NoBrowser
 )
 
@@ -10,6 +11,7 @@ $args = @(
     "streamlit",
     "run",
     ".\dashboard.py",
+    "--server.address", $BindAddress,
     "--server.port", $Port,
     "--server.headless", "true",
     "--browser.gatherUsageStats", "false"

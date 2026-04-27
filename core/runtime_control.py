@@ -7,6 +7,7 @@ import os
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import zipfile
 from datetime import datetime
@@ -177,6 +178,39 @@ def stop_daemon() -> dict:
     ]
     completed = subprocess.run(command, capture_output=True, text=True, cwd=PROJECT_ROOT)
     return {"ok": completed.returncode == 0, "stdout": completed.stdout, "stderr": completed.stderr}
+
+
+def restart_daemon_async(*, allow_submit: bool, history: int, min_local_delta: float, sleep_seconds: int, max_pending_submissions: int) -> dict:
+    persist_runtime_preferences(
+        allow_submit=allow_submit,
+        history=history,
+        min_local_delta=min_local_delta,
+        sleep_seconds=sleep_seconds,
+        max_pending_submissions=max_pending_submissions,
+    )
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(PROJECT_ROOT / "restart_autonomous_neurogolf.ps1"),
+        "-History",
+        str(history),
+        "-MinLocalDelta",
+        str(min_local_delta),
+        "-SleepSeconds",
+        str(sleep_seconds),
+        "-MaxPendingSubmissions",
+        str(max_pending_submissions),
+    ]
+    if allow_submit:
+        command.append("-AllowSubmit")
+    subprocess.Popen(command, cwd=PROJECT_ROOT)
+    return {
+        "ok": True,
+        "stdout": "Restart requested in background.",
+        "stderr": "",
+    }
 
 
 def sync_state(history: int = 10) -> dict:
@@ -410,3 +444,44 @@ def save_operator_note(text: str) -> Path:
     NEUROGOLF_OPERATOR_NOTE_PATH.parent.mkdir(parents=True, exist_ok=True)
     NEUROGOLF_OPERATOR_NOTE_PATH.write_text(text, encoding="utf-8")
     return NEUROGOLF_OPERATOR_NOTE_PATH
+
+
+def remote_access_endpoints(port: int = 8501) -> dict:
+    lan_urls: list[str] = []
+    try:
+        for entries in psutil.net_if_addrs().values():
+            for entry in entries:
+                if getattr(entry, "family", None) != socket.AF_INET:
+                    continue
+                address = str(getattr(entry, "address", "")).strip()
+                if not address or address.startswith("127.") or address == "0.0.0.0":
+                    continue
+                lan_urls.append(f"http://{address}:{port}")
+    except Exception:
+        pass
+
+    tailscale_urls: list[str] = []
+    tailscale_binary = shutil.which("tailscale")
+    if tailscale_binary:
+        try:
+            completed = subprocess.run(
+                [tailscale_binary, "ip", "-4"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            if completed.returncode == 0:
+                for line in completed.stdout.splitlines():
+                    address = line.strip()
+                    if address:
+                        tailscale_urls.append(f"http://{address}:{port}")
+        except Exception:
+            pass
+
+    return {
+        "hostname": socket.gethostname(),
+        "localhost_url": f"http://localhost:{port}",
+        "lan_urls": sorted(set(lan_urls)),
+        "tailscale_urls": sorted(set(tailscale_urls)),
+        "recommended_remote": (sorted(set(tailscale_urls)) or sorted(set(lan_urls)) or [f"http://localhost:{port}"])[0],
+    }

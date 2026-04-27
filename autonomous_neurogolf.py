@@ -83,6 +83,8 @@ def _compact_summary(summary: dict) -> str:
         "recent_output_manifests": summary.get("recent_output_manifests", [])[:6],
         "imported_sources": summary.get("imported_sources", [])[:10],
         "public_seed_hints": summary.get("public_seed_hints", {}),
+        "exploit_audit": summary.get("exploit_audit", {}),
+        "recent_cycle_patterns": summary.get("recent_cycle_patterns", {}),
         "lessons": summary.get("lessons", []),
     }
     return json.dumps(payload, indent=2)[:8000]
@@ -140,17 +142,31 @@ def _recent_seed_modes(reports: list[dict], limit: int = 6) -> set[tuple[str, st
 
 def _fallback_candidates() -> list[tuple[str, str]]:
     return [
+        ("latest_artem_part2", "processable_best"),
         ("latest_artem_part4", "processable_best"),
         ("latest_konbu_5344", "processable_best"),
         ("latest_rocker_5353", "processable_best"),
         ("latest_afr1ste_5177", "processable_best"),
+        ("latest_artem_part2", "hybrid_priority"),
         ("latest_artem_part4", "hybrid_priority"),
         ("latest_konbu_5344", "hybrid_priority"),
         ("latest_rocker_5353", "hybrid_priority"),
         ("latest_afr1ste_5177", "hybrid_priority"),
+        ("latest_artem_part2", "fill_invalid_priority"),
         ("latest_artem_part4", "fill_invalid_priority"),
         ("latest_konbu_5344", "fill_invalid_priority"),
     ]
+
+
+def _recent_experiment_keys(reports: list[dict], limit: int = 12) -> set[tuple[str, str, str]]:
+    used: set[tuple[str, str, str]] = set()
+    for report in reports[:limit]:
+        plan = report.get("plan") or {}
+        action = str(plan.get("action", "")).strip() or "seed_preserving_build"
+        seed = str(plan.get("seed_label", "")).strip()
+        mode = str(plan.get("mode", "")).strip()
+        used.add((action, seed, mode))
+    return used
 
 
 def _safe_model_response(role: str, prompt: str, system: str, *, fallback_role: str = "orchestrator") -> str:
@@ -238,6 +254,8 @@ Focus on:
 - avoiding bad local-scorer traps
 - finding efficient, leaderboard-safe task swaps
 - identifying loopholes or efficiency families worth testing
+- exploiting the current dynamic-shape and Constant-node scoring quirks before a rescore closes them
+- using higher-scoring imported public notebooks when they outrank the old seed family
 
 Return a compact numbered list.
 """,
@@ -256,6 +274,7 @@ Look for:
 - safe vs risky experiment splits
 - potential submission/validator quirks
 - unusual but testable leaderboard ideas
+- paths that move toward the 9k+ public exploit family instead of repeating safe 5k-era packs
 
 Return a compact numbered list.
 """,
@@ -273,6 +292,7 @@ Your job:
 - combine Kaggle imports, local manifests, prior lessons, and public seed behavior
 - look for validator-safe loopholes or underused imported assets
 - suggest experiments that the first two strategists might miss
+- explicitly reason about dynamic-shape undercounting and Constant-heavy public packs
 
 Return a compact numbered list.
 """,
@@ -338,6 +358,22 @@ Return the 3 biggest risks or likely mistakes.
 
 
 def _normalize_plan(plan: dict, reports: list[dict]) -> dict:
+    action = str(plan.get("action", "seed_preserving_build")).strip() or "seed_preserving_build"
+    if action == "scorer_blend_build":
+        mode = str(plan.get("mode", "skip_known_dynamic")).strip() or "skip_known_dynamic"
+        recent_keys = _recent_experiment_keys(reports)
+        if (action, "", mode) not in recent_keys:
+            plan["seed_label"] = ""
+            return plan
+        for candidate_mode in ("skip_known_dynamic", "strict_known", "skip_known_dynamic_sanitized"):
+            if (action, "", candidate_mode) not in recent_keys:
+                plan = dict(plan)
+                plan["mode"] = candidate_mode
+                plan["seed_label"] = ""
+                plan["rationale"] = str(plan.get("rationale", "")).strip() + " | switched to a novel scorer blend mode"
+                return plan
+        return plan
+
     recent = _recent_seed_modes(reports)
     seed = str(plan.get("seed_label", "latest_artem_part4")).strip() or "latest_artem_part4"
     mode = str(plan.get("mode", "processable_best")).strip() or "processable_best"
@@ -355,6 +391,7 @@ def _normalize_plan(plan: dict, reports: list[dict]) -> dict:
 
 def _experiment_fingerprint(plan: dict, build_manifest: dict) -> str:
     payload = {
+        "action": plan.get("action"),
         "seed_label": plan.get("seed_label"),
         "mode": plan.get("mode"),
         "replaced_count": build_manifest.get("replaced_count"),
@@ -376,6 +413,7 @@ def _candidate_signature(manifest: dict) -> str:
         if task:
             tasks.append(task)
     payload = {
+        "build_strategy": manifest.get("build_strategy"),
         "base_zip": manifest.get("seed_zip") or manifest.get("base_zip"),
         "mode": manifest.get("mode"),
         "preserved_task000": manifest.get("preserved_task000"),
@@ -396,6 +434,27 @@ def _find_cached_seed_manifest(seed_label: str, mode: str) -> dict | None:
         if not isinstance(payload, dict):
             continue
         if payload.get("seed_label") != seed_label or payload.get("mode") != mode:
+            continue
+        zip_path = Path(str(payload.get("zip_path", "")).strip())
+        if not zip_path.exists():
+            continue
+        payload["_manifest_path"] = str(path)
+        return payload
+    return None
+
+
+def _find_cached_blend_manifest(mode: str) -> dict | None:
+    outputs_dir = NEUROGOLF_PROJECT_ROOT / "outputs"
+    for path in sorted(outputs_dir.glob("*manifest*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("build_strategy") != "scorer_blend":
+            continue
+        if payload.get("mode") != mode:
             continue
         zip_path = Path(str(payload.get("zip_path", "")).strip())
         if not zip_path.exists():
@@ -436,9 +495,13 @@ Critic:
 {team["critic"]}
 
 Return JSON only with:
-- action: "seed_preserving_build" or "sync_only"
-- seed_label: one of ["latest_artem_part4", "latest_rocker_5353", "latest_konbu_5344", "latest_afr1ste_5177"]
-- mode: one of ["processable_best", "fill_invalid_priority", "hybrid_priority"]
+- action: "seed_preserving_build", "scorer_blend_build", or "sync_only"
+- seed_label:
+  - for seed_preserving_build: one of ["latest_artem_part4", "latest_artem_part2", "latest_rocker_5353", "latest_konbu_5344", "latest_afr1ste_5177"]
+  - for scorer_blend_build: empty string
+- mode:
+  - for seed_preserving_build: one of ["processable_best", "fill_invalid_priority", "hybrid_priority"]
+  - for scorer_blend_build: one of ["skip_known_dynamic", "strict_known", "skip_known_dynamic_sanitized"]
 - should_submit: true/false
 - rationale: short string
 - submission_message: short string
@@ -448,6 +511,7 @@ Default behavior:
 - keep task000
 - prefer safer processable-best swaps over aggressive fills
 - use imported Kaggle assets when they materially improve the experiment quality
+- if the exploit path looks stronger, choose scorer_blend_build and exploit current metric quirks before a rescore closes them
 """,
         system=NEUROGOLF_AUTONOMY_SYSTEM_PROMPT,
         timeout=240,
@@ -481,6 +545,7 @@ def run_seed_preserving_build(zip_name: str, seed_label: str, mode: str) -> dict
         if cached_zip.resolve() != output_zip.resolve():
             shutil.copyfile(cached_zip, output_zip)
         manifest = dict(cached)
+        manifest["build_strategy"] = "seed_preserving"
         manifest["zip_path"] = str(output_zip)
         manifest["zip_size_bytes"] = output_zip.stat().st_size
         manifest["manifest_path"] = str(manifest_path)
@@ -511,6 +576,7 @@ def run_seed_preserving_build(zip_name: str, seed_label: str, mode: str) -> dict
     ]
     subprocess.run(command, cwd=NEUROGOLF_PROJECT_ROOT, check=True)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["build_strategy"] = "seed_preserving"
     manifest["manifest_path"] = str(manifest_path)
     _daemon_log(
         "build:done "
@@ -521,8 +587,62 @@ def run_seed_preserving_build(zip_name: str, seed_label: str, mode: str) -> dict
     return manifest
 
 
-def maybe_submit(zip_name: str, message: str, manifest: dict, min_local_delta: float) -> dict:
-    if float(manifest.get("delta_sum_local", 0.0)) < min_local_delta:
+def run_scorer_blend_build(zip_name: str, mode: str) -> dict:
+    cached = _find_cached_blend_manifest(mode)
+    output_zip = NEUROGOLF_PROJECT_ROOT / "outputs" / zip_name
+    manifest_path = NEUROGOLF_PROJECT_ROOT / "outputs" / f"{Path(zip_name).stem}_manifest.json"
+    if cached is not None:
+        cached_zip = Path(str(cached["zip_path"]))
+        if cached_zip.resolve() != output_zip.resolve():
+            shutil.copyfile(cached_zip, output_zip)
+        manifest = dict(cached)
+        manifest["build_strategy"] = "scorer_blend"
+        manifest["zip_path"] = str(output_zip)
+        manifest["zip_size_bytes"] = output_zip.stat().st_size
+        manifest["manifest_path"] = str(manifest_path)
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        _daemon_log(
+            "build:cache-hit "
+            f"strategy=scorer_blend mode={mode} source={cached.get('_manifest_path')} zip={output_zip.name}"
+        )
+        _write_status("building", f"Using cached scorer blend for {mode}", progress=0.84, extra={"mode": mode, "build_strategy": "scorer_blend"})
+        return manifest
+
+    include_sanitized = mode == "skip_known_dynamic_sanitized"
+    skip_known = mode in {"skip_known_dynamic", "skip_known_dynamic_sanitized"}
+    _daemon_log(f"build:start strategy=scorer_blend mode={mode} zip={zip_name}")
+    _write_status("building", f"Building scorer blend {mode}", progress=0.8, extra={"mode": mode, "build_strategy": "scorer_blend"})
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(NEUROGOLF_PACKAGE_SCRIPT),
+        "-BuildStrategy",
+        "scorer_blend",
+        "-ZipName",
+        zip_name,
+    ]
+    if skip_known:
+        command.append("-SkipKnownValidation")
+    if include_sanitized:
+        command.append("-IncludeSanitized")
+    subprocess.run(command, cwd=NEUROGOLF_PROJECT_ROOT, check=True)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["build_strategy"] = "scorer_blend"
+    manifest["mode"] = mode
+    manifest["manifest_path"] = str(manifest_path)
+    _daemon_log(
+        "build:done "
+        f"strategy=scorer_blend mode={mode} known={manifest.get('known_score')} "
+        f"live={manifest.get('estimated_live_score')} files={manifest.get('files')}"
+    )
+    _write_status("building", f"Finished scorer blend {mode}", progress=0.88, extra={"mode": mode, "build_strategy": "scorer_blend"})
+    return manifest
+
+
+def maybe_submit(zip_name: str, message: str, manifest: dict, min_local_delta: float, *, bypass_local_delta: bool = False) -> dict:
+    if not bypass_local_delta and float(manifest.get("delta_sum_local", 0.0)) < min_local_delta:
         _write_status("submitting", "Submission skipped by local delta gate", progress=0.93)
         return {"submitted": False, "reason": f"delta_sum_local below threshold {min_local_delta:.2f}"}
     command = [
@@ -594,11 +714,18 @@ def run_cycle(args: argparse.Namespace) -> dict:
         _daemon_log("cycle:planner chose sync-only")
         _write_status("idle", "Planner chose sync-only", progress=1.0)
     else:
-        seed_label = str(plan.get("seed_label", "latest_artem_part4")).strip() or "latest_artem_part4"
         mode = str(plan.get("mode", "processable_best")).strip() or "processable_best"
-        submit_message = str(plan.get("submission_message", "")).strip() or f"autonomy {seed_label} {mode}"
-        _daemon_log(f"cycle:plan seed={seed_label} mode={mode} submit={bool(plan.get('should_submit', False))}")
-        build_manifest = run_seed_preserving_build(args.zip_name, seed_label, mode)
+        seed_label = str(plan.get("seed_label", "latest_artem_part4")).strip()
+        if action == "scorer_blend_build":
+            seed_label = ""
+        if not seed_label and action == "seed_preserving_build":
+            seed_label = "latest_artem_part4"
+        submit_message = str(plan.get("submission_message", "")).strip() or f"autonomy {action} {seed_label or 'blend'} {mode}"
+        _daemon_log(f"cycle:plan action={action} seed={seed_label} mode={mode} submit={bool(plan.get('should_submit', False))}")
+        if action == "scorer_blend_build":
+            build_manifest = run_scorer_blend_build(args.zip_name, mode)
+        else:
+            build_manifest = run_seed_preserving_build(args.zip_name, seed_label, mode)
         report["build_manifest"] = build_manifest
         report["experiment_fingerprint"] = _experiment_fingerprint(plan, build_manifest)
         report["candidate_signature"] = _candidate_signature(build_manifest)
@@ -629,6 +756,7 @@ def run_cycle(args: argparse.Namespace) -> dict:
                     submit_message,
                     build_manifest,
                     args.min_local_delta,
+                    bypass_local_delta=(action == "scorer_blend_build"),
                 )
         elif args.allow_submit:
             report["submit_result"] = {"submitted": False, "reason": "planner held submission"}

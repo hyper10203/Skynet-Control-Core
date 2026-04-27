@@ -1,0 +1,20 @@
+services:
+  skynet-control-core:
+    build: .
+    container_name: skynet-control-core
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      NEUROGOLF_PROJECT_ROOT: ${NEUROGOLF_PROJECT_ROOT:-/workspace/neurogolf}
+      NEUROGOLF_OUTPUTS_DIR: ${NEUROGOLF_OUTPUTS_DIR:-/workspace/neurogolf/outputs}
+      NEUROGOLF_IMPORTED_SOURCES_DIR: ${NEUROGOLF_IMPORTED_SOURCES_DIR:-/workspace/neurogolf/scratch/gui_imports}
+      NEUROGOLF_CURRENT_MANIFEST: ${NEUROGOLF_CURRENT_MANIFEST:-/workspace/neurogolf/outputs/submission_manifest_current.json}
+    volumes:
+      - ./memory:/app/memory
+      - ./outputs:/app/outputs
+      - ./data:/app/data
+      - ./mounted/neurogolf:/workspace/neurogolf
+    restart: unless-stopped

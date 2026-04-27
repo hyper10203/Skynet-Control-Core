@@ -15,6 +15,7 @@ It controls:
 - model role and context configuration
 
 The dashboard refreshes itself every 5 minutes.
+If `SKYNET_UI_PASSWORD` is set, the whole control center stays locked until you authenticate.
 
 ## Main tabs
 
@@ -29,6 +30,7 @@ Shows:
 - live daemon log tail
 - score trend over time
 - operator note preview
+- remote LAN and Tailscale access URLs
 
 ### Control
 

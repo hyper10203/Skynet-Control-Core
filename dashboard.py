@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -33,6 +34,8 @@ from core.runtime_control import (
     read_state,
     read_status,
     recent_reports,
+    restart_daemon_async,
+    remote_access_endpoints,
     run_single_cycle,
     save_operator_note,
     start_daemon,
@@ -238,6 +241,78 @@ div[data-baseweb="select"] > div,
     color: #d8f7ff;
     padding: 0.5rem 0.9rem;
 }
+
+.auth-shell {
+    max-width: 760px;
+    margin: 4vh auto 0 auto;
+    border: 1px solid rgba(127, 255, 238, 0.22);
+    border-radius: 28px;
+    padding: 1.6rem;
+    background:
+        linear-gradient(135deg, rgba(127,255,238,0.08), rgba(32,190,255,0.05) 55%, rgba(255,73,132,0.08)),
+        rgba(4, 10, 17, 0.9);
+    box-shadow: 0 0 34px rgba(0, 255, 209, 0.12);
+}
+
+.auth-title {
+    margin: 0.3rem 0 0.9rem 0;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+.auth-copy {
+    color: #c0d8df;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 1100px) {
+    .hero-grid {
+        grid-template-columns: 1fr;
+    }
+    .asset-rail {
+        justify-content: flex-start;
+    }
+    .status-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .top-shell {
+        padding: 1rem;
+        border-radius: 22px;
+    }
+    .hero-title {
+        font-size: 1.6rem;
+    }
+    .hero-copy {
+        font-size: 0.95rem;
+    }
+    .asset-rail img {
+        width: 44px;
+        height: 44px;
+    }
+    .status-card-grid {
+        grid-template-columns: 1fr;
+    }
+    .badge-chip {
+        font-size: 0.72rem;
+        padding: 0.3rem 0.6rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.82rem;
+        padding: 0.45rem 0.6rem;
+    }
+    .auth-shell {
+        margin-top: 2vh;
+        padding: 1rem;
+    }
+    .auth-title {
+        font-size: 1.45rem;
+    }
+}
 </style>
 """
 st.markdown(THEME_CSS, unsafe_allow_html=True)
@@ -258,6 +333,8 @@ ARC_CMAP = ListedColormap(ARC_COLORS)
 REFRESH_EVERY_SECONDS = 300
 ROLE_ENV_KEYS = {role: f"ARC_MODEL_{role.upper()}" for role in ROLE_LABELS}
 CTX_ENV_KEYS = {role: f"ARC_CTX_{role.upper()}" for role in ROLE_LABELS}
+AUTH_STATE_KEY = "skynet_ui_authenticated"
+AUTH_INPUT_KEY = "skynet_ui_password_input"
 
 
 def fmt_value(value, *, digits: int = 2, fallback: str = "n/a") -> str:
@@ -286,6 +363,55 @@ def completed_scores(submissions: list[dict]) -> list[float]:
         except Exception:
             continue
     return scores
+
+
+def configured_ui_password(env_settings: dict[str, str]) -> str:
+    return str(env_settings.get("SKYNET_UI_PASSWORD", "")).strip()
+
+
+def ui_requires_password(env_settings: dict[str, str]) -> bool:
+    return bool(configured_ui_password(env_settings))
+
+
+def is_authenticated(env_settings: dict[str, str]) -> bool:
+    if not ui_requires_password(env_settings):
+        return True
+    return bool(st.session_state.get(AUTH_STATE_KEY, False))
+
+
+def render_auth_gate(env_settings: dict[str, str]) -> None:
+    if not ui_requires_password(env_settings):
+        st.session_state[AUTH_STATE_KEY] = True
+        return
+    if st.session_state.get(AUTH_STATE_KEY):
+        return
+
+    st.markdown(
+        """
+        <div class="auth-shell">
+          <div class="hero-kicker">Secure Access Layer</div>
+          <h1 class="auth-title">Skynet Control Core</h1>
+          <div class="auth-copy">
+            This deployment is locked. Enter the control password to access the dashboard, daemon controls,
+            ARC visualizer, and NeuroGolf automation surfaces.
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_left, col_mid, col_right = st.columns([1, 1.3, 1])
+    with col_mid:
+        password = st.text_input("Control password", type="password", key=AUTH_INPUT_KEY)
+        if st.button("Unlock Time Core", width="stretch"):
+            expected = configured_ui_password(env_settings)
+            if hmac.compare_digest(password, expected):
+                st.session_state[AUTH_STATE_KEY] = True
+                st.session_state.pop(AUTH_INPUT_KEY, None)
+                st.success("Access granted.")
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
 
 
 def clamp_progress(value) -> float:
@@ -637,8 +763,10 @@ def best_profile_for_installed_models(installed_models: list[dict]) -> tuple[str
 
 @st.fragment(run_every=REFRESH_EVERY_SECONDS)
 def render_sidebar_fragment() -> None:
+    env_settings = load_env_settings()
     state = read_state()
     daemon = daemon_status()
+    endpoints = remote_access_endpoints()
     submissions = state.get("recent_submissions", [])
     team_name = str(state.get("current_team_name") or latest_team_name()).strip()
     rank_info = cached_rank(team_name)
@@ -658,6 +786,10 @@ def render_sidebar_fragment() -> None:
     st.metric("Pending Subs", fmt_value(state.get("pending_submission_count"), digits=0))
     if team_name:
         st.caption(f"Team: {team_name}")
+    st.caption(f"Remote: {endpoints.get('recommended_remote', 'n/a')}")
+    if ui_requires_password(env_settings) and st.button("Lock Time Core", width="stretch"):
+        st.session_state[AUTH_STATE_KEY] = False
+        st.rerun()
 
 
 @st.fragment(run_every=REFRESH_EVERY_SECONDS)
@@ -683,6 +815,7 @@ def render_dashboard() -> None:
     latest_plan = latest_report.get("plan") or {}
     latest_submit = latest_report.get("submit_result") or {}
     imported_sources = list_imported_kaggle_sources(limit=15)
+    endpoints = remote_access_endpoints()
 
     st.markdown(
         f"""
@@ -787,6 +920,28 @@ def render_dashboard() -> None:
             st.markdown("**Operator note preview**")
             st.code((operator_note().strip() or "No persistent steering note saved.")[:900], language="text")
 
+        access_left, access_right = st.columns([1.0, 1.0])
+        with access_left:
+            st.markdown('<div class="panel"><h4>Remote Access</h4><div class="panel-copy">Use these URLs from other devices. Tailscale is the safest internet-facing route. The dashboard password gate is enforced before the UI loads.</div></div>', unsafe_allow_html=True)
+            st.markdown(f"**Local:** `{endpoints.get('localhost_url', 'n/a')}`")
+            lan_urls = endpoints.get("lan_urls", [])
+            tailscale_urls = endpoints.get("tailscale_urls", [])
+            if lan_urls:
+                st.markdown("**LAN URLs**")
+                for url in lan_urls[:6]:
+                    st.code(url, language="text")
+            if tailscale_urls:
+                st.markdown("**Tailscale URLs**")
+                for url in tailscale_urls[:6]:
+                    st.code(url, language="text")
+        with access_right:
+            st.markdown('<div class="panel"><h4>Always-On Checklist</h4><div class="panel-copy">Keep the laptop reachable while the control center and daemon run in the background.</div></div>', unsafe_allow_html=True)
+            st.markdown("- Keep the laptop on AC power.")
+            st.markdown("- Disable sleep and hibernate for plugged-in mode.")
+            st.markdown("- Let the dashboard bind on all interfaces.")
+            st.markdown("- Use Tailscale for remote access outside your home network.")
+            st.markdown("- Keep the UI password enabled for deployed access.")
+
     with tab_control:
         st.markdown('<div class="panel"><h4>Autonomy Flight Deck</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and harvest Kaggle sources.</div></div>', unsafe_allow_html=True)
         allow_submit = st.checkbox(
@@ -860,10 +1015,9 @@ def render_dashboard() -> None:
             st.rerun()
         if lower_actions[2].button("Reboot the Time Core", width="stretch"):
             save_operator_note(operator_note())
-            stop_daemon()
             set_action_result(
                 "Daemon restart requested.",
-                start_daemon(
+                restart_daemon_async(
                     allow_submit=allow_submit,
                     history=int(history),
                     min_local_delta=float(delta),
@@ -996,15 +1150,14 @@ def render_dashboard() -> None:
                 sleep_seconds=int(control_settings["sleep_seconds"]),
                 max_pending_submissions=int(control_settings["max_pending_submissions"]),
             )
-            stop_daemon()
-            start_daemon(
+            restart_daemon_async(
                 allow_submit=bool(control_settings["allow_submit"]),
                 history=int(control_settings["history"]),
                 min_local_delta=float(control_settings["min_local_delta"]),
                 sleep_seconds=int(control_settings["sleep_seconds"]),
                 max_pending_submissions=int(control_settings["max_pending_submissions"]),
             )
-            st.success("Profile applied and daemon restarted.")
+            st.success("Profile applied. Background daemon restart requested.")
 
         st.subheader("Manual Role Override")
         for role, label in ROLE_LABELS.items():
@@ -1145,6 +1298,10 @@ def render_dashboard() -> None:
                 st.markdown(reply)
             st.session_state["orchestrator_chat_messages"].append({"role": "assistant", "content": reply})
 
+bootstrap_env = load_env_settings()
+render_auth_gate(bootstrap_env)
+if not is_authenticated(bootstrap_env):
+    st.stop()
 
 with st.sidebar:
     render_sidebar_fragment()

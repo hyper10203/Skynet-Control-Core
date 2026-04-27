@@ -15,6 +15,12 @@
   <img src="https://img.shields.io/badge/kaggle-neurogolf%20automation-0f172a?style=for-the-badge&logo=kaggle&logoColor=20beff" alt="Kaggle NeuroGolf automation" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/hyper10203/Skynet-Control-Core/actions/workflows/ci.yml">
+    <img src="https://github.com/hyper10203/Skynet-Control-Core/actions/workflows/ci.yml/badge.svg" alt="CI status" />
+  </a>
+</p>
+
 ## What This Is
 
 Skynet Control Core is a local AI operations stack for:
@@ -106,6 +112,40 @@ Main launcher scripts:
 - [run_autonomous_neurogolf.ps1](run_autonomous_neurogolf.ps1)
 - [start_autonomous_neurogolf.ps1](start_autonomous_neurogolf.ps1)
 - [stop_autonomous_neurogolf.ps1](stop_autonomous_neurogolf.ps1)
+
+## Deployment
+
+This project is deployable, but it is best treated as a **self-hosted AI operations system**, not a generic stateless web app.
+
+Included deployment assets:
+
+- [Dockerfile](Dockerfile)
+- [docker-compose.yml](docker-compose.yml)
+- [.streamlit/config.toml](.streamlit/config.toml)
+- [DEPLOYMENT.md](DEPLOYMENT.md)
+- [.github/workflows/ci.yml](.github/workflows/ci.yml)
+
+Best-fit deployment path:
+
+- run the dashboard in Docker
+- keep Ollama running on the host or on a reachable model server
+- mount a writable NeuroGolf workspace into the container
+- access it over LAN or through Tailscale from any device while your laptop stays on
+
+Fast start:
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+```
+
+Then open `http://localhost:8501`.
+
+For remote control from other devices:
+
+- on the same network, use the LAN URL shown in the dashboard
+- across the internet, use Tailscale and open the Tailscale URL shown in the dashboard
+- keep `SKYNET_UI_PASSWORD` set in `.env`
 
 ## Dashboard Surface
 

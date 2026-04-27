@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.env
+outputs/generated
+outputs/reports
+outputs/neurogolf
+outputs/submission_state.json
+memory/neurogolf_state.json
+memory/operator_note.txt
+run_dashboard - Shortcut.lnk
