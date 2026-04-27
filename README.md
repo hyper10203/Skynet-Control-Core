@@ -1,178 +1,156 @@
-# ARC Agent System
+# Skynet Control Core
 
-Local Ollama-based ARC and NeuroGolf helper with one front-door orchestrator plus a lightweight fast operator lane.
+<p align="center">
+  <img src="assets/skynet-control-core-banner.svg" alt="Skynet Control Core banner" width="100%" />
+</p>
 
-## Main Idea
+<p align="center">
+  <strong>Local-first ARC and NeuroGolf orchestration with Ollama, Kaggle automation, and a live sci-fi control center.</strong>
+</p>
 
-You normally talk to one model: the orchestrator.
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11%2B-0f172a?style=for-the-badge&logo=python&logoColor=ffd43b" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/streamlit-control%20center-0f172a?style=for-the-badge&logo=streamlit&logoColor=ff4b4b" alt="Streamlit control center" />
+  <img src="https://img.shields.io/badge/ollama-multi--model-0f172a?style=for-the-badge" alt="Ollama multi-model" />
+  <img src="https://img.shields.io/badge/kaggle-neurogolf%20automation-0f172a?style=for-the-badge&logo=kaggle&logoColor=20beff" alt="Kaggle NeuroGolf automation" />
+</p>
 
-There is also a lighter operator-facing chat lane for quick questions and control work.
+## What This Is
 
-That orchestrator decides when to call:
-- `deepseek-r1` for careful rule discovery
-- `mistral` for an alternate hypothesis
-- `qwen2.5-coder` for Python solver generation
-- `llama3` for critique and edge-case checking
-- `memory/patterns.json` for pattern retrieval
+Skynet Control Core is a local AI operations stack for:
 
-## Model Roles
+- ARC-style symbolic reasoning
+- NeuroGolf submission optimization
+- multi-model orchestration through Ollama
+- Kaggle source harvesting and score-aware submission workflows
+- live monitoring through a Streamlit GUI
 
-- Orchestrator: `qwen2.5`
-- Fast operator link: `qwen2.5`
-- Primary reasoning: `deepseek-r1`
-- Alternate reasoning: `mistral`
-- Third reasoning: `llama3`
-- Coding: `qwen2.5-coder`
-- Critic: `llama3`
+You talk to one front-door system. It decides when to keep work local and when to wake specialist models.
 
-## Recommended Context Windows
+## Why It Exists
 
-These are the defaults already wired in:
+Most local agent stacks either feel like a toy chatbot or a loose pile of scripts.
 
-- Orchestrator: `8192`
-- Fast operator link: `6144`
-- Primary reasoning: `12288`
-- Alternate reasoning: `8192`
-- Third reasoning: `8192`
-- Coding: `8192`
-- Critic: `6144`
+This repo is built to be a proper control surface:
 
-If your machine is tight on RAM or VRAM, cut them roughly in half.
-Short response caps are also set by default so the models stay practical in local Ollama.
+- one orchestrator lane for high-level decisions
+- one lightweight fast operator lane for quick questions
+- three reasoning lanes for disagreement and synthesis
+- one coder lane for implementation
+- one critic lane for attack and failure analysis
+- a persistent memory layer
+- a daemon that can keep working while you step away
 
-## Cline Settings
+## Core Features
 
-If you want one top-level AI in Cline, set:
+- Stylish Streamlit dashboard with live daemon status, rank, scores, logs, reports, and ARC visualization
+- Autonomous NeuroGolf loop with seed-preserving pack strategies and Kaggle-aware submission gating
+- Kaggle intake box that can pull notebooks and datasets directly from pasted links or CLI snippets
+- Model-role editor with profile loading, installed-model detection, and context auto-fill
+- Direct orchestrator chat plus a separate fast operator chat lane
+- `.env`-backed runtime settings so loop timing and submission controls stay stable across restarts
 
-- Provider: `Ollama`
-- Base URL: `http://localhost:11434`
-- Model: `qwen2.5`
+## System Layout
 
-Reason: `qwen2.5` should be the one you talk to. `qwen2.5-coder` stays as the internal coding specialist inside this project.
+```mermaid
+flowchart LR
+    User["Operator"] --> GUI["Skynet Control Core GUI"]
+    GUI --> Orch["Orchestrator"]
+    GUI --> Fast["Fast Operator Link"]
+    Orch --> R1["Primary Reasoner"]
+    Orch --> R2["Secondary Reasoner"]
+    Orch --> R3["Tertiary Reasoner"]
+    Orch --> Coder["Coder"]
+    Orch --> Critic["Critic"]
+    Orch --> Memory["Pattern Memory"]
+    Orch --> Kaggle["Kaggle Intake + Submission Loop"]
+    Kaggle --> NG["NeuroGolf Workspace"]
+    NG --> Reports["Reports / Logs / Manifests"]
+    Reports --> GUI
+```
 
-## Data Layout
+## Model Team
 
-The project is already wired to the NeuroGolf task set on `E:` through:
+| Role | Purpose |
+|---|---|
+| `orchestrator` | Main planner and synthesis layer |
+| `operator_fast` | Lightweight operator-facing chat and control helper |
+| `reasoning_primary` | Careful symbolic strategist |
+| `reasoning_secondary` | Alternative hypothesis generator |
+| `reasoning_tertiary` | Overlooked-leverage and resource-fusion strategist |
+| `coder` | Implementation specialist |
+| `critic` | Counterexample and risk hunter |
 
-- [data/neurogolf-2026](E:/LLM/New%20project_main/arc-agent-system/data/neurogolf-2026)
+## Repository Highlights
 
-That junction points to:
-
-- [main NeuroGolf data](E:/LLM/New%20project_main/data/neurogolf-2026)
-
-To keep local Ollama responsive, the default prompt pack uses:
-
-- `2` train examples
-- `0` test examples
-- `0` arc-gen examples
+- [dashboard.py](dashboard.py): main Streamlit control center
+- [autonomous_neurogolf.py](autonomous_neurogolf.py): 24/7 NeuroGolf daemon logic
+- [core/](core): orchestration, config, prompts, env handling, runtime control
+- [agents/](agents): role-specific agent wrappers
+- [CONTROL_CENTER_README.md](CONTROL_CENTER_README.md): full button-by-button GUI guide
+- [data/training](data/training): ARC task payloads used by the local stack
 
 ## Quick Start
 
-From [arc-agent-system](E:/LLM/New%20project_main/arc-agent-system):
+1. Install dependencies with `bootstrap.ps1`
+2. Make sure Ollama is running
+3. Run `healthcheck.py`
+4. Start the dashboard
+5. Use the GUI to load roles, control the daemon, and inspect NeuroGolf cycles
 
-1. Install dependencies:
-   - `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1`
-2. Make sure Ollama is running:
-   - `ollama serve`
-3. Check models:
-   - `python .\healthcheck.py`
-4. Run a small NeuroGolf batch:
-   - `powershell -ExecutionPolicy Bypass -File .\run_neurogolf.ps1 -Limit 5 -CritiqueRounds 2`
+Main launcher scripts:
 
-You can also run directly:
+- [bootstrap.ps1](bootstrap.ps1)
+- [start_dashboard.ps1](start_dashboard.ps1)
+- [stop_dashboard.ps1](stop_dashboard.ps1)
+- [run_autonomous_neurogolf.ps1](run_autonomous_neurogolf.ps1)
+- [start_autonomous_neurogolf.ps1](start_autonomous_neurogolf.ps1)
+- [stop_autonomous_neurogolf.ps1](stop_autonomous_neurogolf.ps1)
 
-- `python .\main.py`
-- `python .\main.py --limit 20 --critique-rounds 1`
+## Dashboard Surface
 
-## Outputs
+The control center includes:
 
-- Generated solver code: [outputs/generated](E:/LLM/New%20project_main/arc-agent-system/outputs/generated)
-- Per-task reports: [outputs/reports](E:/LLM/New%20project_main/arc-agent-system/outputs/reports)
-- Pattern memory: [memory/patterns.json](E:/LLM/New%20project_main/arc-agent-system/memory/patterns.json)
-- Submission state: [outputs/submission_state.json](E:/LLM/New%20project_main/arc-agent-system/outputs/submission_state.json)
+- live daemon and telemetry overview
+- flight-deck controls for starting, stopping, syncing, and running cycles
+- model profile management
+- NeuroGolf leaderboard and submission state
+- ARC visualizer
+- report inspection
+- direct chat with the orchestrator or fast operator link
 
-## Submission Automation
+See [CONTROL_CENTER_README.md](CONTROL_CENTER_README.md) for the full guide.
 
-This project can also submit to Kaggle and poll the result by itself.
+## NeuroGolf Automation Notes
 
-Prereqs:
-- Kaggle API credentials already configured on the machine
-- `submission.zip` ready
+The NeuroGolf side is intentionally conservative:
 
-Example:
+- preserve strong accepted public seeds where possible
+- treat Kaggle score as final truth
+- avoid trusting local scorer deltas too much
+- keep `task000` unless there is strong evidence to remove it
+- prefer controlled swaps over full rebuilds
 
-- `python .\submit_to_kaggle.py --file "E:\path\to\submission.zip" --estimated-score 4800`
-- `powershell -ExecutionPolicy Bypass -File .\submit_if_ready.ps1 -SubmissionFile "E:\path\to\submission.zip" -EstimatedScore 4800`
+## Deployment Notes
 
-Default behavior:
-- competition: `neurogolf-2026`
-- minimum jump required before submit: `250` points
-- it stores the last submission state and estimate
+This repo is set up to be GitHub-safe:
 
-Useful flags:
-- `--threshold 300`
-- `--force`
-- `--dry-run`
-- `--estimate-file path\to\score.json`
+- `.env` is not committed
+- live daemon logs and local runtime state are ignored
+- the tracked codebase includes `.env.example` for setup
 
-## GUI Control Center
+If you deploy this elsewhere, copy `.env.example` to `.env` and adjust model and path settings for the target machine.
 
-There is now a full local dashboard for the ARC + NeuroGolf system.
+## Project Philosophy
 
-Main file:
-- [dashboard.py](E:/LLM/New%20project_main/arc-agent-system/dashboard.py)
-- [CONTROL_CENTER_README.md](E:/LLM/New%20project_main/arc-agent-system/CONTROL_CENTER_README.md)
+This is not trying to be a generic chatbot.
 
-Launcher scripts:
-- [start_dashboard.ps1](E:/LLM/New%20project_main/arc-agent-system/start_dashboard.ps1)
-- [stop_dashboard.ps1](E:/LLM/New%20project_main/arc-agent-system/stop_dashboard.ps1)
+It is a working local operations system for ARC and NeuroGolf:
 
-What the GUI shows:
-- daemon start and stop controls
-- live progress bars and current phase
-- latest submission score, best public score, and current team rank
-- recent cycle reports and live daemon logs
-- operator prompt injection for steering the planner
-- model role assignments, installed Ollama models, and upgrade profiles
-- a fast operator chat lane plus the heavier orchestrator chat lane
+- hypothesis-driven
+- score-aware
+- tool-using
+- memory-backed
+- operator-steerable
 
-The dashboard is designed as a sci-fi control room and uses a few web-served assets for styling and branding.
-Runtime control values like sleep time, pending submission cap, and submission permission are now persisted so they do not drift after a submission or daemon restart.
-
-## Autonomous NeuroGolf Mode
-
-The agent system can now sync the real NeuroGolf workspace, ingest its manifests and Kaggle results, and run a seed-preserving optimization cycle on its own.
-
-Important behavior:
-- it starts from strong public seeds instead of a full scorer-wide rebuild
-- it preserves `task000`
-- it prefers `processable_best` swaps over aggressive invalid fills
-- it stores the synced workspace snapshot in [memory/neurogolf_state.json](E:/LLM/New%20project_main/arc-agent-system/memory/neurogolf_state.json)
-
-Useful commands:
-
-- `python .\sync_neurogolf_artifacts.py --history 10`
-- `python .\autonomous_neurogolf.py --sync-only --history 10`
-- `powershell -ExecutionPolicy Bypass -File .\run_autonomous_neurogolf.ps1`
-- `powershell -ExecutionPolicy Bypass -File .\run_autonomous_neurogolf.ps1 -AllowSubmit`
-
-Autonomy reports are written to:
-
-- [outputs/neurogolf](E:/LLM/New%20project_main/arc-agent-system/outputs/neurogolf)
-
-## Prompt Design
-
-Each model now has a fixed role prompt:
-
-- Qwen orchestrates and chooses who to wake up
-- DeepSeek focuses on exact symbolic ARC rules
-- Mistral searches for a different rule family
-- Qwen-Coder turns final reasoning into short numpy code
-- LLaMA3 tries to break the code and surface edge cases
-
-That separation is deliberate so the models do less duplicate work.
-
-Direct-first routing is enabled by default:
-
-- if Qwen already has a concrete rule, it keeps the job local
-- it only wakes DeepSeek or Mistral when it genuinely wants extra help
+If your goal is to leave the machine running and let a coordinated local model team keep pushing the competition forward, this repo is built for that.
