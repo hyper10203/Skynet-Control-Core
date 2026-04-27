@@ -1,0 +1,19 @@
+[project]
+name = "arc-agent-system"
+version = "0.1.0"
+description = "Local Ollama-based ARC agent system with pattern memory"
+requires-python = ">=3.10"
+dependencies = [
+  "kaggle>=1.7",
+  "matplotlib>=3.8",
+  "numpy>=2.0",
+  "psutil>=6.1",
+  "python-dotenv>=1.0",
+  "requests>=2.32",
+  "streamlit>=1.45",
+  "tqdm>=4.66",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

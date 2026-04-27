@@ -1,0 +1,145 @@
+[
+  {
+    "task": "{'id': 'task001', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task001.json', 'payload': {'train': [{'input': [[0, 7, 7], [7, 7, 7], [0, 7, 7]], 'output': [[0, 0, 0, 0, ",
+    "reasoning": "failure: Failed to query Ollama model 'deepseek-r1': HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=180)",
+    "keywords": [],
+    "success": false,
+    "code_preview": "",
+    "stored_at": "2026-04-26T07:23:00Z"
+  },
+  {
+    "task": "{'id': 'task001', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task001.json', 'payload': {'train': [{'input': [[0, 7, 7], [7, 7, 7], [0, 7, 7]], 'output': [[0, 0, 0, 0, ",
+    "reasoning": "failure: Failed to query Ollama model 'deepseek-r1': HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=600)",
+    "keywords": [],
+    "success": false,
+    "code_preview": "",
+    "stored_at": "2026-04-26T07:54:37Z"
+  },
+  {
+    "task": "{'id': 'task001', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task001.json', 'payload': {'train': [{'input': [[0, 7, 7], [7, 7, 7], [0, 7, 7]], 'output': [[0, 0, 0, 0, ",
+    "reasoning": "The task involves replicating a pattern with symmetry. The primary reasoner should handle this straightforward transformation.",
+    "keywords": [
+      "symmetry"
+    ],
+    "success": true,
+    "code_preview": "```python\nimport numpy as np\n\ndef solve(grid):\n    # Convert input grid to numpy array for easier manipulation\n    grid_np = np.array(grid)\n    \n    # Get the dimensions of the grid\n    rows, cols = grid_np.shape\n    \n    # Create a new grid with double the size in both dimensions\n    new_grid = np.zeros((rows * 2, cols * 2), dtype=int)\n    \n    # Copy the original grid into the top-left quadrant ",
+    "stored_at": "2026-04-26T07:55:51Z"
+  },
+  {
+    "task": "{'id': 'task001', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task001.json', 'payload': {'train': [{'input': [[0, 7, 7], [7, 7, 7], [0, 7, 7]], 'output': [[0, 0, 0, 0, ",
+    "reasoning": "Replicate the input pattern with symmetry as shown in the examples.",
+    "keywords": [
+      "symmetry"
+    ],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    n = len(grid)\n    result = np.zeros((n, n), dtype=int)\n    \n    for i in range(n):\n        for j in range(n):\n            if (i + j) % 2 == 0:\n                result[i, j] = grid[i, j]\n            else:\n                result[i, j] = grid[n-1-i, n-1-j]\n    \n    return result.tolist()",
+    "stored_at": "2026-04-26T07:56:47Z"
+  },
+  {
+    "task": "{'id': 'task001', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task001.json', 'payload': {'train': [{'input': [[0, 7, 7], [7, 7, 7], [0, 7, 7]], 'output': [[0, 0, 0, 0, ",
+    "reasoning": "Replicate the input pattern to a larger grid, filling in with zeros where not specified.",
+    "keywords": [
+      "fill"
+    ],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    rows, cols = len(grid), len(grid[0])\n    large_grid = np.zeros((rows * 3, cols * 3), dtype=int)\n    for i in range(rows):\n        for j in range(cols):\n            large_grid[i*3:(i+1)*3, j*3:(j+1)*3] = grid[i][j]\n    return large_grid.tolist()",
+    "stored_at": "2026-04-26T08:06:11Z"
+  },
+  {
+    "task": "{'id': 'task002', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task002.json', 'payload': {'train': [{'input': [[0, 0, 0, 0, 0, 0], [0, 0, 3, 0, 0, 0], [0, 3, 0, 3, 0, 0]",
+    "reasoning": "Identify and update non-zero elements based on their adjacent values.",
+    "keywords": [],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    g = np.array(grid)\n    rows, cols = g.shape\n    for i in range(rows):\n        for j in range(cols):\n            if g[i, j] != 0:\n                neighbors = []\n                if i > 0: neighbors.append(g[i-1, j])\n                if i < rows-1: neighbors.append(g[i+1, j])\n                if j > 0: neighbors.append(g[i, j-1])\n                if j < cols-1: n",
+    "stored_at": "2026-04-26T08:06:40Z"
+  },
+  {
+    "task": "{'id': 'task003', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task003.json', 'payload': {'train': [{'input': [[0, 1, 0], [1, 1, 0], [0, 1, 0], [0, 1, 1], [0, 1, 0], [1,",
+    "reasoning": "Identify and apply transformation rules based on input patterns.",
+    "keywords": [],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    grid = np.array(grid)\n    # Example rule: Swap rows 0 and 1\n    grid[[0, 1]] = grid[[1, 0]]\n    return grid.tolist()",
+    "stored_at": "2026-04-26T08:07:02Z"
+  },
+  {
+    "task": "{'id': 'task004', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task004.json', 'payload': {'train': [{'input': [[0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 6, 6, 6, 0, 0, 0, 0, 0], ",
+    "reasoning": "The task involves shifting elements in a matrix based on specific rules, which can be handled directly by the primary reasoner.",
+    "keywords": [],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    grid = np.array(grid)\n    rows, cols = grid.shape\n    \n    for i in range(rows):\n        for j in range(cols):\n            if grid[i, j] != 0:\n                grid[i, j:] = np.roll(grid[i, j:], -1)\n    \n    return grid.tolist()",
+    "stored_at": "2026-04-26T08:07:28Z"
+  },
+  {
+    "task": "{'id': 'task005', 'path': 'E:\\\\LLM\\\\New project_main\\\\arc-agent-system\\\\data\\\\neurogolf-2026\\\\task005.json', 'payload': {'train': [{'input': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ",
+    "reasoning": "Identify and apply consistent transformations to the input patterns.",
+    "keywords": [],
+    "success": true,
+    "code_preview": "import numpy as np\n\ndef solve(grid):\n    grid = np.array(grid)\n    # Example transformation: rotate 90 degrees clockwise\n    transformed_grid = np.rot90(grid, -1)\n    return transformed_grid.tolist()",
+    "stored_at": "2026-04-26T08:07:55Z"
+  },
+  {
+    "task": "neurogolf_competition_state",
+    "reasoning": "Preserve the strongest accepted seed and swap only on safer subsets.",
+    "keywords": [
+      "neurogolf",
+      "seed",
+      "kaggle",
+      "submission"
+    ],
+    "success": true,
+    "source": "neurogolf_sync",
+    "stored_at": "2026-04-27T02:54:42Z"
+  },
+  {
+    "task": "neurogolf_competition_state",
+    "reasoning": "Keep task000 when building seed-based submission packs.",
+    "keywords": [
+      "neurogolf",
+      "seed",
+      "kaggle",
+      "submission"
+    ],
+    "success": true,
+    "source": "neurogolf_sync",
+    "stored_at": "2026-04-27T02:54:42Z"
+  },
+  {
+    "task": "neurogolf_competition_state",
+    "reasoning": "Processable-best swaps are safer than fill-invalid replacements.",
+    "keywords": [
+      "neurogolf",
+      "seed",
+      "kaggle",
+      "submission"
+    ],
+    "success": true,
+    "source": "neurogolf_sync",
+    "stored_at": "2026-04-27T02:54:42Z"
+  },
+  {
+    "task": "neurogolf_competition_state",
+    "reasoning": "Do not trust full local scorer-wide blends over accepted public seed packs.",
+    "keywords": [
+      "neurogolf",
+      "seed",
+      "kaggle",
+      "submission"
+    ],
+    "success": true,
+    "source": "neurogolf_sync",
+    "stored_at": "2026-04-27T02:54:42Z"
+  },
+  {
+    "task": "neurogolf_competition_state",
+    "reasoning": "Use Kaggle leaderboard results as final truth; local score is only a weak hint.",
+    "keywords": [
+      "neurogolf",
+      "seed",
+      "kaggle",
+      "submission"
+    ],
+    "success": true,
+    "source": "neurogolf_sync",
+    "stored_at": "2026-04-27T02:54:42Z"
+  }
+]
