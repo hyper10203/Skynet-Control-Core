@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from core.arc_loader import serialize_task
 from core.config import MODEL_OPTIONS, MODEL_REGISTRY
-from core.executor import ask
+from core.executor import ask_with_fallback
 
 
 def choose_reasoning(task: dict, r1: str, r2: str, memory_context: list[dict]) -> str:
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["orchestrator"],
         f"""Task:
 {serialize_task(task)}
@@ -25,4 +25,5 @@ Prefer a reusable, concrete ARC rule that can be turned into Python.
 """,
         system="You are an ARC orchestrator that selects or merges candidate rules.",
         options=MODEL_OPTIONS["orchestrator"],
+        fallback_models=[MODEL_REGISTRY["operator_fast"], MODEL_REGISTRY["reasoning_secondary"]],
     )

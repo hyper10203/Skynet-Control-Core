@@ -14,6 +14,12 @@ $stdoutPath = Join-Path $reportsDir "daemon.out.log"
 $stderrPath = Join-Path $reportsDir "daemon.err.log"
 New-Item -ItemType Directory -Path $reportsDir -Force | Out-Null
 
+& $python (Join-Path $root "healthcheck.py")
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Healthcheck failed. Refusing to start autonomous NeuroGolf with an unhealthy model stack."
+    exit $LASTEXITCODE
+}
+
 if (Test-Path $pidPath) {
     $existingPid = Get-Content $pidPath -ErrorAction SilentlyContinue
     if ($existingPid) {

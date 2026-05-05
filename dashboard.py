@@ -11,7 +11,7 @@ from matplotlib.colors import ListedColormap
 from core.arc_loader import load_tasks
 from core.config import DEFAULT_DATA_DIR
 from core.env_settings import load_env_settings, update_env_settings
-from core.executor import ask
+from core.executor import ask_with_fallback
 from core.model_profiles import (
     MODEL_PROFILES,
     MODEL_SOURCES,
@@ -20,7 +20,15 @@ from core.model_profiles import (
     env_updates_for_profile,
 )
 from core.prompts import FAST_OPERATOR_SYSTEM_PROMPT, ORCHESTRATOR_SYSTEM_PROMPT
+from core.self_improvement import (
+    enable_self_improvement,
+    disable_self_improvement,
+    is_self_improvement_enabled,
+    get_improvement_status,
+    load_improvement_history,
+)
 from core.runtime_control import (
+    archive_skynet_clutter,
     current_role_map,
     daemon_status,
     fetch_kaggle_targets,
@@ -31,6 +39,7 @@ from core.runtime_control import (
     ollama_models,
     operator_note,
     persist_runtime_preferences,
+    read_distillation_status,
     read_state,
     read_status,
     recent_reports,
@@ -38,6 +47,9 @@ from core.runtime_control import (
     remote_access_endpoints,
     run_single_cycle,
     save_operator_note,
+    save_distillation_settings,
+    save_imported_seed_controls,
+    skynet_clutter_summary,
     start_daemon,
     stop_daemon,
     sync_state,
@@ -135,6 +147,36 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     background: rgba(6, 14, 22, 0.82);
     color: var(--aqua);
     font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.badge-chip:hover {
+    border-color: var(--aqua);
+    box-shadow: 0 0 12px rgba(127, 255, 238, 0.2);
+}
+
+.badge-online {
+    background: linear-gradient(135deg, rgba(46, 204, 64, 0.2), rgba(46, 204, 64, 0.1));
+    border-color: rgba(46, 204, 64, 0.5);
+    color: #2ECC40;
+}
+
+.badge-offline {
+    background: linear-gradient(135deg, rgba(255, 65, 54, 0.2), rgba(255, 65, 54, 0.1));
+    border-color: rgba(255, 65, 54, 0.5);
+    color: #FF4136;
+}
+
+.badge-target {
+    background: linear-gradient(135deg, rgba(255, 220, 0, 0.15), rgba(255, 220, 0, 0.08));
+    border-color: rgba(255, 220, 0, 0.4);
+    color: #FFDC00;
+}
+
+.badge-phase {
+    background: linear-gradient(135deg, rgba(32, 190, 255, 0.15), rgba(32, 190, 255, 0.08));
+    border-color: rgba(32, 190, 255, 0.4);
+    color: var(--cyan);
 }
 
 .asset-rail {
@@ -183,12 +225,21 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     border-radius: 18px;
     padding: 0.85rem 0.9rem;
     background: linear-gradient(180deg, rgba(10,20,30,0.95), rgba(4,10,17,0.95));
+    transition: all 0.2s ease;
+}
+
+.status-card:hover {
+    border-color: var(--aqua);
+    box-shadow: 0 0 20px rgba(127, 255, 238, 0.15);
 }
 
 .status-label {
     color: var(--sub);
     font-size: 0.78rem;
     text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 .status-value {
@@ -202,6 +253,89 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     margin-top: 0.2rem;
     color: var(--aqua);
     font-size: 0.78rem;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+}
+
+.status-online { background: #2ECC40; box-shadow: 0 0 8px #2ECC40; animation: pulse-green 2s infinite; }
+.status-offline { background: #FF4136; box-shadow: 0 0 8px #FF4136; }
+.status-warning { background: #FFDC00; box-shadow: 0 0 8px #FFDC00; animation: pulse-yellow 2s infinite; }
+.status-info { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 8px #2ECC40; opacity: 1; }
+    50% { box-shadow: 0 0 16px #2ECC40; opacity: 0.8; }
+}
+
+@keyframes pulse-yellow {
+    0%, 100% { box-shadow: 0 0 8px #FFDC00; opacity: 1; }
+    50% { box-shadow: 0 0 16px #FFDC00; opacity: 0.8; }
+}
+
+.alert-banner {
+    border: 1px solid var(--line-hot);
+    border-radius: 16px;
+    padding: 1rem 1.2rem;
+    background: linear-gradient(135deg, rgba(255,73,132,0.12), rgba(255,73,132,0.06));
+    margin-bottom: 1rem;
+}
+
+.alert-title {
+    color: var(--pink);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-text {
+    color: #e9fdff;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.metric-highlight {
+    background: linear-gradient(135deg, rgba(127,255,238,0.15), rgba(32,190,255,0.1));
+    border: 1px solid rgba(127,255,238,0.25);
+    border-radius: 12px;
+    padding: 0.6rem 1rem;
+    margin: 0.5rem 0;
+}
+
+/* Improve Streamlit's default info/success/warning boxes */
+[data-testid="stAlert"] {
+    border-radius: 16px !important;
+    border: 1px solid var(--line) !important;
+}
+
+[data-testid="stAlert"] > div {
+    background: rgba(5, 12, 19, 0.9) !important;
+}
+
+/* Success - green tint */
+[data-testid="stAlert"][data-baseweb="notification"][data-kind="positive"] {
+    border-color: rgba(46, 204, 64, 0.5) !important;
+    box-shadow: 0 0 15px rgba(46, 204, 64, 0.15) !important;
+}
+
+/* Warning - yellow tint */
+[data-testid="stAlert"][data-baseweb="notification"][data-kind="warning"] {
+    border-color: rgba(255, 220, 0, 0.5) !important;
+    box-shadow: 0 0 15px rgba(255, 220, 0, 0.15) !important;
+}
+
+/* Info - cyan tint */
+[data-testid="stAlert"][data-baseweb="notification"][data-kind="info"] {
+    border-color: rgba(32, 190, 255, 0.5) !important;
+    box-shadow: 0 0 15px rgba(32, 190, 255, 0.15) !important;
 }
 
 [data-testid="stMetric"] {
@@ -219,10 +353,49 @@ div.stButton > button {
     font-family: 'Orbitron', sans-serif;
     font-weight: 700;
     letter-spacing: 0.03em;
+    transition: all 0.2s ease;
+}
+
+div.stButton > button:hover {
+    border-color: var(--aqua);
+    background: linear-gradient(135deg, rgba(127,255,238,0.25), rgba(32,190,255,0.28));
+    box-shadow: 0 0 20px rgba(127, 255, 238, 0.25);
+    transform: translateY(-1px);
+}
+
+div.stButton > button:active {
+    transform: translateY(1px);
+}
+
+div.stButton > button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
 }
 
 .stProgress > div > div > div > div {
     background: linear-gradient(90deg, var(--aqua), var(--cyan) 50%, var(--pink) 100%);
+    border-radius: 999px;
+    box-shadow: 0 0 10px rgba(127, 255, 238, 0.4);
+}
+
+.section-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    margin: 1.5rem 0;
+}
+
+.subsection-header {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    margin: 1.2rem 0 0.8rem 0;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 div[data-baseweb="select"] > div,
@@ -345,6 +518,19 @@ def fmt_value(value, *, digits: int = 2, fallback: str = "n/a") -> str:
     return str(value)
 
 
+def format_bytes(value) -> str:
+    try:
+        size = float(value or 0)
+    except (TypeError, ValueError):
+        return "0 B"
+    units = ["B", "KB", "MB", "GB"]
+    unit = 0
+    while size >= 1024 and unit < len(units) - 1:
+        size /= 1024
+        unit += 1
+    return f"{size:.1f} {units[unit]}" if unit else f"{int(size)} B"
+
+
 def current_completed_submission(submissions: list[dict]) -> dict:
     for item in submissions:
         if item.get("public_score") is not None:
@@ -457,6 +643,15 @@ def show_action_result() -> None:
         st.error(action["label"])
     if body:
         st.code(body, language="text")
+
+
+def shutdown_and_logout() -> dict:
+    result = stop_daemon()
+    st.session_state[AUTH_STATE_KEY] = False
+    st.session_state.pop("orchestrator_chat_messages", None)
+    st.session_state.pop("last_action", None)
+    st.cache_data.clear()
+    return result
 
 
 def role_widget_key(role: str) -> str:
@@ -668,7 +863,8 @@ def query_control_chat(target_role: str, prompt: str, context: str, env_settings
     context_key = "ARC_CTX_OPERATOR_FAST" if use_fast_lane else "ARC_CTX_ORCHESTRATOR"
     temp_key = "ARC_TEMP_OPERATOR_FAST" if use_fast_lane else "ARC_TEMP_ORCHESTRATOR"
     predict_key = "ARC_PREDICT_OPERATOR_FAST" if use_fast_lane else "ARC_PREDICT_ORCHESTRATOR"
-    response = ask(
+    fallback_models = [env_settings.get("ARC_MODEL_OPERATOR_FAST", "qwen2.5")] if not use_fast_lane else [env_settings.get("ARC_MODEL_ORCHESTRATOR", "qwen2.5")]
+    response = ask_with_fallback(
         model_name,
         f"""You are the {'fast operator-side helper' if use_fast_lane else 'direct front-door orchestrator chat'} for this machine.
 
@@ -687,6 +883,7 @@ Respond like an operational lead. Be concrete, aware of the current machine stat
             "num_predict": int(env_settings.get(predict_key, "220")),
         },
         timeout=180,
+        fallback_models=fallback_models,
     )
     return response
 
@@ -728,11 +925,13 @@ def best_profile_for_installed_models(installed_models: list[dict]) -> tuple[str
         return "current-safe", {"matched": [], "missing": ["No Ollama models detected."]}
 
     candidates = [
+        "rtx3050-offline-max",
+        "current-safe",
+        "giant-anchor",
+        "balanced-2026",
+        "coding-lab",
         "your-local-max",
         "agentic-max",
-        "coding-lab",
-        "balanced-2026",
-        "current-safe",
     ]
 
     best_key = "current-safe"
@@ -763,13 +962,34 @@ def best_profile_for_installed_models(installed_models: list[dict]) -> tuple[str
 
 @st.fragment(run_every=REFRESH_EVERY_SECONDS)
 def render_sidebar_fragment() -> None:
-    env_settings = load_env_settings()
-    state = read_state()
-    daemon = daemon_status()
-    endpoints = remote_access_endpoints()
+    try:
+        env_settings = load_env_settings()
+    except Exception:
+        env_settings = {}
+    
+    try:
+        state = read_state() or {}
+    except Exception:
+        state = {}
+    
+    try:
+        daemon = daemon_status() or {"running": False}
+    except Exception:
+        daemon = {"running": False}
+    
+    try:
+        endpoints = remote_access_endpoints()
+    except Exception:
+        endpoints = {}
+    
     submissions = state.get("recent_submissions", [])
     team_name = str(state.get("current_team_name") or latest_team_name()).strip()
-    rank_info = cached_rank(team_name)
+    
+    try:
+        rank_info = cached_rank(team_name)
+    except Exception:
+        rank_info = {}
+    
     latest_completed = current_completed_submission(submissions)
 
     st.title("Resistance Console")
@@ -790,32 +1010,94 @@ def render_sidebar_fragment() -> None:
     if ui_requires_password(env_settings) and st.button("Lock Time Core", width="stretch"):
         st.session_state[AUTH_STATE_KEY] = False
         st.rerun()
+    if st.button("Log Out of Judgment Day", width="stretch"):
+        shutdown_and_logout()
+        st.rerun()
 
 
 @st.fragment(run_every=REFRESH_EVERY_SECONDS)
 def render_dashboard() -> None:
-    state = read_state()
-    status = read_status()
-    daemon = daemon_status()
-    reports = recent_reports(limit=12)
-    env_settings = load_env_settings()
+    # Wrap in try-except to prevent dashboard crashes
+    try:
+        state = read_state() or {}
+    except Exception as e:
+        st.error(f"Failed to read state: {e}")
+        state = {}
+    
+    try:
+        status = read_status() or {}
+    except Exception as e:
+        st.error(f"Failed to read status: {e}")
+        status = {}
+    
+    try:
+        daemon = daemon_status() or {"running": False}
+    except Exception as e:
+        st.error(f"Failed to read daemon status: {e}")
+        daemon = {"running": False}
+    
+    try:
+        reports = recent_reports(limit=12)
+    except Exception as e:
+        st.error(f"Failed to read reports: {e}")
+        reports = []
+    
+    try:
+        env_settings = load_env_settings()
+    except Exception as e:
+        st.error(f"Failed to load env settings: {e}")
+        env_settings = {}
+    
     seed_role_editor(env_settings)
     seed_control_editor(env_settings)
     apply_pending_context_resets()
-    models = cached_ollama_models()
+    
+    try:
+        models = cached_ollama_models()
+    except Exception as e:
+        st.warning(f"Failed to load Ollama models: {e}")
+        models = []
+    
     model_options = model_options_from_installed(models, env_settings)
     submissions = state.get("recent_submissions", [])
     team_name = str(state.get("current_team_name") or latest_team_name()).strip()
-    rank_info = cached_rank(team_name)
+    
+    try:
+        rank_info = cached_rank(team_name)
+    except Exception as e:
+        st.warning(f"Failed to load rank: {e}")
+        rank_info = {}
+    
     latest_completed = current_completed_submission(submissions)
     latest_submission = submissions[0] if submissions else {}
+    campaign = state.get("campaign_progress", {}) if isinstance(state.get("campaign_progress"), dict) else {}
     progress = clamp_progress(status.get("progress", 0.0))
     scores = completed_scores(submissions)
     latest_report = reports[0] if reports else {}
     latest_plan = latest_report.get("plan") or {}
     latest_submit = latest_report.get("submit_result") or {}
-    imported_sources = list_imported_kaggle_sources(limit=15)
-    endpoints = remote_access_endpoints()
+    
+    try:
+        imported_sources = list_imported_kaggle_sources(limit=15)
+    except Exception as e:
+        st.warning(f"Failed to load imported sources: {e}")
+        imported_sources = []
+    
+    try:
+        endpoints = remote_access_endpoints()
+    except Exception as e:
+        st.warning(f"Failed to load endpoints: {e}")
+        endpoints = []
+
+    daemon_badge_class = "badge-online" if daemon.get("running") else "badge-offline"
+    daemon_badge_text = "ONLINE" if daemon.get("running") else "OFFLINE"
+    si_enabled = is_self_improvement_enabled()
+    si_badge_class = "badge-online" if si_enabled else "badge-offline"
+    si_badge_text = "🧠 SI ON" if si_enabled else "🧠 SI OFF"
+    comp_data = state.get("competition_data", {})
+    comp_ready = comp_data.get("ready", False)
+    comp_badge_class = "badge-online" if comp_ready else "badge-offline"
+    comp_badge_text = "🏆 DATA READY" if comp_ready else "🏆 NO DATA"
 
     st.markdown(
         f"""
@@ -829,11 +1111,14 @@ def render_dashboard() -> None:
                 model-role management, submission telemetry, and an ARC task recon chamber.
               </div>
               <div class="badge-row">
-                <div class="badge-chip">Daemon: {"ONLINE" if daemon.get("running") else "OFFLINE"}</div>
+                <div class="badge-chip {daemon_badge_class}">● {daemon_badge_text}</div>
+                <div class="badge-chip {si_badge_class}">{si_badge_text}</div>
+                <div class="badge-chip {comp_badge_class}">{comp_badge_text}</div>
                 <div class="badge-chip">Rank: {fmt_value(rank_info.get("rank"), digits=0)}</div>
                 <div class="badge-chip">Latest: {fmt_value(latest_completed.get("public_score"))}</div>
                 <div class="badge-chip">Best: {fmt_value(state.get("best_completed_public_score"))}</div>
-                <div class="badge-chip">Working On: {status.get("phase", "idle")}</div>
+                <div class="badge-chip badge-phase">{status.get("phase", "idle")}</div>
+                <!-- No target - all valid V3 submissions allowed immediately -->
               </div>
             </div>
             <div class="asset-rail">
@@ -849,28 +1134,43 @@ def render_dashboard() -> None:
 
     show_action_result()
 
+    daemon_indicator = "status-online" if daemon.get("running") else "status-offline"
+    daemon_status_text = "ONLINE" if daemon.get("running") else "OFFLINE"
+
+    phase = status.get("phase", "idle")
+    is_reset = status.get("reset", False)
+    if phase == "improving":
+        phase_indicator = "status-online"  # Green for self-improvement
+    elif phase == "idle":
+        phase_indicator = "status-warning"  # Yellow for idle
+    else:
+        phase_indicator = "status-info"  # Blue for active work
+
+    # Show FRESH START indicator when daemon was reset
+    phase_display = f"{phase} 🆕 FRESH START" if is_reset else phase
+
     st.markdown(
         f"""
         <div class="status-card-grid">
           <div class="status-card">
-            <div class="status-label">Current Phase</div>
-            <div class="status-value">{status.get("phase", "idle")}</div>
+            <div class="status-label"><span class="status-indicator {phase_indicator}"></span>Current Phase</div>
+            <div class="status-value">{phase_display}</div>
             <div class="status-sub">{status.get("message", "No live status yet.")}</div>
           </div>
           <div class="status-card">
-            <div class="status-label">Current Rank</div>
+            <div class="status-label"><span class="status-indicator status-info"></span>Current Rank</div>
             <div class="status-value">{fmt_value(rank_info.get("rank"), digits=0)}</div>
             <div class="status-sub">Team: {team_name or "n/a"}</div>
           </div>
           <div class="status-card">
-            <div class="status-label">Latest Completed</div>
+            <div class="status-label"><span class="status-indicator status-info"></span>Latest Completed</div>
             <div class="status-value">{fmt_value(latest_completed.get("public_score"))}</div>
             <div class="status-sub">{latest_completed.get("message", "Awaiting completed score")}</div>
           </div>
           <div class="status-card">
-            <div class="status-label">Daemon Telemetry</div>
+            <div class="status-label"><span class="status-indicator {daemon_indicator}"></span>Daemon {daemon_status_text}</div>
             <div class="status-value">{fmt_value(daemon.get("pid"), digits=0)}</div>
-            <div class="status-sub">CPU {fmt_value(daemon.get("cpu_percent"))}% | RAM {fmt_value(daemon.get("memory_mb"))} MB</div>
+            <div class="status-sub">CPU {fmt_value(daemon.get("cpu_percent"))}% | RAM {fmt_value(daemon.get("memory_mb"))} MB | {"STALE" if daemon.get("status_stale") else "LIVE"}</div>
           </div>
         </div>
         """,
@@ -878,7 +1178,15 @@ def render_dashboard() -> None:
     )
 
     st.progress(progress)
-    st.caption(f"Mission completion signal: {progress * 100:.0f}%")
+    progress_color = "#2ECC40" if progress >= 0.8 else "#FFDC00" if progress >= 0.4 else "#FF4136"
+    st.markdown(
+        f"""
+        <div style="text-align: center; color: {progress_color}; font-family: 'Orbitron', sans-serif; font-size: 0.85rem; margin-top: 0.3rem;">
+            Mission Completion: {progress * 100:.0f}%
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     tab_overview, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
         ["Overview", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
@@ -895,17 +1203,23 @@ def render_dashboard() -> None:
                     "rank": rank_info,
                     "latest_submission": latest_submission,
                     "latest_completed": latest_completed,
+                    "campaign_progress": campaign,
                 }
             )
         with right_col:
             st.markdown('<div class="panel"><h4>What It Is Working On</h4><div class="panel-copy">Current mission lane, chosen seed family, and latest autonomous decision point.</div></div>', unsafe_allow_html=True)
             st.markdown(f"**Phase:** `{status.get('phase', 'idle')}`")
             st.markdown(f"**Message:** {status.get('message', 'No active mission text yet.')}")
-            st.markdown(f"**Latest planned seed:** `{latest_plan.get('seed_label', 'n/a')}`")
-            st.markdown(f"**Latest plan mode:** `{latest_plan.get('mode', 'n/a')}`")
+            st.markdown(f"**Latest plan action:** `{latest_plan.get('action', 'n/a')}`")
+            st.markdown(f"**Latest plan target:** `{latest_plan.get('target') or latest_plan.get('seed_label', 'n/a')}`")
+            st.markdown(f"**Latest plan variant:** `{latest_plan.get('variant_hint') or latest_plan.get('mode', 'n/a')}`")
             st.markdown(f"**Latest submit decision:** `{latest_submit.get('reason', 'n/a')}`")
+            if daemon.get("status_stale"):
+                st.warning(f"Daemon status looks stale: last update was about {fmt_value(daemon.get('status_age_seconds'))} seconds ago.")
             st.subheader("Signal Feed")
             st.code(tail_log(80) or "No daemon log yet.", language="text")
+
+        st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
         trend_col, note_col = st.columns([1.1, 0.9])
         with trend_col:
@@ -916,9 +1230,15 @@ def render_dashboard() -> None:
                 st.info("No completed public scores have been synced yet.")
         with note_col:
             st.markdown('<div class="panel"><h4>Mission Flags</h4><div class="panel-copy">Persistent steering and imported source count.</div></div>', unsafe_allow_html=True)
-            st.metric("Imported Kaggle sources", len(imported_sources))
-            st.markdown("**Operator note preview**")
+
+            st.metric("📦 Imported sources", len(imported_sources))
+
+            # Target Score metric removed - targets disabled, all valid submissions allowed
+
+            st.markdown("<div style='margin-top: 1rem;'><strong>📝 Operator Note</strong></div>", unsafe_allow_html=True)
             st.code((operator_note().strip() or "No persistent steering note saved.")[:900], language="text")
+
+        st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
 
         access_left, access_right = st.columns([1.0, 1.0])
         with access_left:
@@ -976,7 +1296,72 @@ def render_dashboard() -> None:
             key=control_widget_key("max_pending_submissions"),
         )
 
-        top_actions = st.columns(3)
+        # Self-improvement controls
+        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Self-Improvement System</h4><div class="panel-copy">Enable the AI to analyze its own code and propose optimizations for better performance.</div></div>', unsafe_allow_html=True)
+
+        si_enabled = is_self_improvement_enabled()
+        si_status = get_improvement_status()
+
+        si_col1, si_col2, si_col3 = st.columns([1, 1, 2])
+        with si_col1:
+            if st.button("🧠 Enable Self-Improvement" if not si_enabled else "✅ Self-Improvement Active", width="stretch", disabled=si_enabled):
+                enable_self_improvement()
+                st.success("Self-improvement enabled! The AI will now analyze and optimize its own code.")
+                st.rerun()
+        with si_col2:
+            if st.button("🛑 Disable Self-Improvement" if si_enabled else "⏸️ Self-Improvement Inactive", width="stretch", disabled=not si_enabled):
+                disable_self_improvement()
+                st.warning("Self-improvement disabled.")
+                st.rerun()
+        with si_col3:
+            st.metric("Recent Improvements", f"{si_status['recent_improvements']}/{si_status['max_cycles']}")
+
+        if si_status['last_attempt']:
+            last = si_status['last_attempt']
+            st.caption(f"Last attempt: {last.get('timestamp', 'unknown')} | Applied: {last.get('applied', False)} | {last.get('reason', 'N/A')[:60]}...")
+
+        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Core Maintenance</h4><div class="panel-copy">Archive generated caches, old cycle reports, and source backups without deleting evidence or source files.</div></div>', unsafe_allow_html=True)
+        clutter = skynet_clutter_summary()
+        maint_cols = st.columns([1, 1, 2])
+        maint_cols[0].metric("Declutter Items", clutter.get("count", 0))
+        maint_cols[1].metric("Archive Size", format_bytes(clutter.get("total_bytes", 0)))
+        maint_cols[2].caption(", ".join(f"{kind}: {count}" for kind, count in clutter.get("by_kind", {}).items()) or "No generated clutter detected.")
+        maint_buttons = st.columns(2)
+        if maint_buttons[0].button("Preview Declutter Archive", width="stretch"):
+            set_action_result("Declutter preview complete.", archive_skynet_clutter(dry_run=True))
+        if maint_buttons[1].button("Archive Generated Clutter", width="stretch"):
+            set_action_result("Generated clutter archived.", archive_skynet_clutter(dry_run=False))
+            st.rerun()
+
+        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Teacher Distillation Track</h4><div class="panel-copy">Fine-tune or steer a large teacher for rule discovery, then distill each task into the smallest legal static ONNX graph.</div></div>', unsafe_allow_html=True)
+        distill = read_distillation_status()
+        plan = distill.get("plan", {})
+        ft_policy = plan.get("fine_tune_policy", {}) if isinstance(plan.get("fine_tune_policy"), dict) else {}
+        dist_cols = st.columns(4)
+        dist_cols[0].metric("Teacher Signals", distill.get("teacher_signal_count", 0))
+        dist_cols[1].metric("Stages", f"{distill.get('ready_or_done_stages', 0)}/{distill.get('stage_count', 0)}")
+        dist_cols[2].metric("Fine Tune", "ON" if distill.get("fine_tune_enabled") else "OFF")
+        dist_cols[3].metric("Teacher", distill.get("teacher_model") or "unset")
+        teacher_model = st.text_input("Teacher model", value=str(distill.get("teacher_model") or ""), key="distill_teacher_model")
+        dataset_path = st.text_input("Fine-tune dataset path", value=str(ft_policy.get("dataset_path", "")), key="distill_dataset_path")
+        adapter_path = st.text_input("Adapter/output path", value=str(ft_policy.get("output_adapter_path", "")), key="distill_adapter_path")
+        ft_enabled = st.checkbox("Enable fine-tune policy", value=bool(ft_policy.get("enabled", False)), key="distill_ft_enabled")
+        if st.button("Save Distillation Settings", width="stretch"):
+            set_action_result(
+                "Distillation settings saved.",
+                save_distillation_settings(
+                    enabled=bool(ft_enabled),
+                    dataset_path=dataset_path,
+                    output_adapter_path=adapter_path,
+                    teacher_model=teacher_model,
+                ),
+            )
+            st.rerun()
+
+        top_actions = st.columns(4)
         if top_actions[0].button("Bring Skynet Online", width="stretch"):
             set_action_result(
                 "Autonomy daemon start requested.",
@@ -990,13 +1375,19 @@ def render_dashboard() -> None:
             )
             st.rerun()
         if top_actions[1].button("Destroy Skynet", width="stretch"):
-            set_action_result("Autonomy daemon stop requested.", stop_daemon())
+            set_action_result(
+                "Skynet destroyed. Learning state cleared - next start will begin fresh.",
+                stop_daemon(reset_state=True)
+            )
             st.rerun()
         if top_actions[2].button("Send a T-800", width="stretch"):
             set_action_result(
                 "One-cycle run finished.",
                 run_single_cycle(allow_submit=allow_submit, history=int(history), min_local_delta=float(delta)),
             )
+            st.rerun()
+        if top_actions[3].button("Log Out of Judgment Day", width="stretch"):
+            set_action_result("AI system shut down and control console locked.", shutdown_and_logout())
             st.rerun()
 
         lower_actions = st.columns(3)
@@ -1062,6 +1453,58 @@ def render_dashboard() -> None:
             st.info("Imported sources appear below and in the NeuroGolf scratch gui_imports folder.")
 
         if imported_sources:
+            st.subheader("Imported Seed Controls")
+            control_rows = []
+            for item in imported_sources:
+                inferred_score = item.get("claimed_public_score")
+                control_rows.append(
+                    {
+                        "use_as_seed": bool(item.get("usable_as_seed")),
+                        "seed_label": item.get("seed_label", ""),
+                        "manual_public_score": inferred_score if item.get("score_source") == "manual" else None,
+                        "current_score": inferred_score,
+                        "score_source": item.get("score_source", ""),
+                        "task_file_count": item.get("task_file_count", 0),
+                        "name": item.get("name", ""),
+                        "note": item.get("control_note", ""),
+                    }
+                )
+            edited_sources = st.data_editor(
+                control_rows,
+                width="stretch",
+                hide_index=True,
+                key="imported_seed_controls_editor",
+                column_config={
+                    "use_as_seed": st.column_config.CheckboxColumn("Use", help="Deselect to remove this seed from autonomous planning."),
+                    "seed_label": st.column_config.TextColumn("Seed", disabled=True),
+                    "manual_public_score": st.column_config.NumberColumn("Manual score", min_value=0.0, step=0.01, format="%.2f"),
+                    "current_score": st.column_config.NumberColumn("Current score", disabled=True, format="%.2f"),
+                    "score_source": st.column_config.TextColumn("Score source", disabled=True),
+                    "task_file_count": st.column_config.NumberColumn("Tasks", disabled=True),
+                    "name": st.column_config.TextColumn("Import", disabled=True),
+                    "note": st.column_config.TextColumn("Note"),
+                },
+            )
+            control_buttons = st.columns(2)
+            if control_buttons[0].button("Save Seed Controls", width="stretch"):
+                edited_records = edited_sources.to_dict("records") if hasattr(edited_sources, "to_dict") else edited_sources
+                rows_to_save = []
+                for row in edited_records:
+                    rows_to_save.append(
+                        {
+                            "seed_label": row.get("seed_label", ""),
+                            "manual_public_score": row.get("manual_public_score"),
+                            "disabled": not bool(row.get("use_as_seed")),
+                            "note": row.get("note", ""),
+                        }
+                    )
+                set_action_result("Seed controls saved.", save_imported_seed_controls(rows_to_save))
+                st.cache_data.clear()
+                st.rerun()
+            if control_buttons[1].button("Refresh Seed Table", width="stretch"):
+                st.cache_data.clear()
+                st.rerun()
+            st.caption("Manual scores override scores inferred from notebook names. Deselected seeds remain visible here, but the planner will stop using them.")
             st.dataframe(imported_sources, width="stretch", hide_index=True)
 
     with tab_models:
@@ -1200,6 +1643,25 @@ def render_dashboard() -> None:
 
     with tab_neurogolf:
         st.markdown('<div class="panel"><h4>Battlefield Telemetry</h4><div class="panel-copy">Competition state, leaderboard standing, recent submissions, and output manifests.</div></div>', unsafe_allow_html=True)
+
+        # Metric V3 Rules Alert Banner
+        metric_v3 = state.get("metric_v3_rules", {})
+        if metric_v3:
+            st.markdown(
+                f"""
+                <div class="alert-banner">
+                    <div class="alert-title">⚠️ April 28, 2026 Metric Update (V3) — ACTIVE</div>
+                    <div class="alert-text">
+                        <strong>Dynamic shapes now yield ZERO points.</strong> All networks must have statically-defined shapes.
+                        <strong>Constant values now correctly count</strong> toward parameter contributions.
+                        Memory footprint is calculated as sum of bytes for all static shapes (excluding input/output layers).
+                        Invalid networks (failed shape inference, symbolic dims) score ZERO.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
         metric_cols = st.columns(4)
         metric_cols[0].metric("Current Rank", fmt_value(rank_info.get("rank"), digits=0))
         metric_cols[1].metric("Leaderboard Score", fmt_value(rank_info.get("score")))
@@ -1236,8 +1698,9 @@ def render_dashboard() -> None:
             {
                 "path": item.get("_path"),
                 "started_at": item.get("started_at"),
-                "mode": (item.get("plan") or {}).get("mode"),
-                "seed_label": (item.get("plan") or {}).get("seed_label"),
+                "action": (item.get("plan") or {}).get("action"),
+                "target": (item.get("plan") or {}).get("target") or (item.get("plan") or {}).get("seed_label"),
+                "variant": (item.get("plan") or {}).get("variant_hint") or (item.get("plan") or {}).get("mode"),
                 "submitted": (item.get("submit_result") or {}).get("submitted"),
                 "submit_reason": (item.get("submit_result") or {}).get("reason"),
             }
@@ -1251,7 +1714,7 @@ def render_dashboard() -> None:
                 selected = st.selectbox(
                     "Inspect report",
                     options=list(range(len(reports))),
-                    format_func=lambda idx: f"{reports[idx].get('started_at', 'unknown')} | {(reports[idx].get('plan') or {}).get('seed_label', 'n/a')}",
+                    format_func=lambda idx: f"{reports[idx].get('started_at', 'unknown')} | {((reports[idx].get('plan') or {}).get('target') or (reports[idx].get('plan') or {}).get('seed_label', 'n/a'))}",
                 )
                 st.json(reports[selected])
             else:

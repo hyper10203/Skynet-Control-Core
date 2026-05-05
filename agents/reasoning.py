@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from core.arc_loader import serialize_task
 from core.config import MODEL_OPTIONS, MODEL_REGISTRY
-from core.executor import ask
+from core.executor import ask_with_fallback
 from core.prompts import (
     PRIMARY_REASONER_SYSTEM_PROMPT,
     SECONDARY_REASONER_SYSTEM_PROMPT,
@@ -12,7 +12,7 @@ from core.prompts import (
 
 def reasoning_primary(task: dict, focus: str | None = None) -> str:
     extra_focus = f"\nExtra focus:\n{focus}\n" if focus else ""
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["reasoning_primary"],
         f"""Solve this ARC task step-by-step.
 
@@ -24,12 +24,13 @@ Give a concise transformation rule and mention reusable pattern ideas.
 """,
         system=PRIMARY_REASONER_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["reasoning_primary"],
+        fallback_models=[MODEL_REGISTRY["reasoning_secondary"], MODEL_REGISTRY["operator_fast"]],
     )
 
 
 def reasoning_secondary(task: dict, focus: str | None = None) -> str:
     extra_focus = f"\nExtra focus:\n{focus}\n" if focus else ""
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["reasoning_secondary"],
         f"""Find a different transformation rule for this ARC task.
 
@@ -41,12 +42,13 @@ Prefer an alternative explanation, not a restatement.
 """,
         system=SECONDARY_REASONER_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["reasoning_secondary"],
+        fallback_models=[MODEL_REGISTRY["reasoning_tertiary"], MODEL_REGISTRY["operator_fast"]],
     )
 
 
 def reasoning_tertiary(task: dict, focus: str | None = None) -> str:
     extra_focus = f"\nExtra focus:\n{focus}\n" if focus else ""
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["reasoning_tertiary"],
         f"""Provide a third-pass ARC explanation that complements the other reasoners.
 
@@ -58,4 +60,5 @@ Look for edge cases, hidden constraints, and alternative implementation shortcut
 """,
         system=TERTIARY_REASONER_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["reasoning_tertiary"],
+        fallback_models=[MODEL_REGISTRY["reasoning_secondary"], MODEL_REGISTRY["operator_fast"]],
     )

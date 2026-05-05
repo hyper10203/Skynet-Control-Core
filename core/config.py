@@ -6,10 +6,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(PROJECT_ROOT / ".env", override=False)
+# Always let the saved local control-center settings win over any stale shell
+# variables from old sessions or background launchers.
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 REQUEST_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "600"))
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -92,6 +95,7 @@ KAGGLE_COMPETITION = os.getenv("ARC_KAGGLE_COMPETITION", "neurogolf-2026")
 KAGGLE_SUBMISSION_FILE = Path(os.getenv("ARC_KAGGLE_SUBMISSION_FILE", str(PROJECT_ROOT / "outputs" / "submission.zip")))
 SUBMISSION_STATE_PATH = Path(os.getenv("ARC_SUBMISSION_STATE_PATH", str(PROJECT_ROOT / "outputs" / "submission_state.json")))
 SUBMISSION_MIN_DELTA = _env_float("ARC_SUBMISSION_MIN_DELTA", 250.0)
+KAGGLE_POLL_INITIAL_SECONDS = _env_int("ARC_KAGGLE_POLL_INITIAL_SECONDS", 240)
 KAGGLE_POLL_SECONDS = _env_int("ARC_KAGGLE_POLL_SECONDS", 60)
 KAGGLE_POLL_ATTEMPTS = _env_int("ARC_KAGGLE_POLL_ATTEMPTS", 45)
 
@@ -126,6 +130,13 @@ NEUROGOLF_AUTONOMY_LOOP_SECONDS = _env_int("NEUROGOLF_AUTONOMY_LOOP_SECONDS", 18
 NEUROGOLF_AUTONOMY_MAX_PENDING_SUBMISSIONS = _env_int("NEUROGOLF_AUTONOMY_MAX_PENDING_SUBMISSIONS", 1)
 NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT = os.getenv("NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT", "1").strip().lower() not in {"0", "false", "no"}
 NEUROGOLF_AUTONOMY_RECENT_REPORT_LIMIT = _env_int("NEUROGOLF_AUTONOMY_RECENT_REPORT_LIMIT", 50)
+NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS = _env_int("NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS", 1800)
+# DISABLED: Target score and streak requirements removed to allow submissions
+# Previously: NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE = 10000.0
+# Previously: NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS = 2
+# Now: Always allow submissions regardless of score or streak
+NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE = _env_float("NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE", 0.0)  # 0 = disabled
+NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS = _env_int("NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS", 0)  # 0 = disabled
 NEUROGOLF_AUTONOMY_LOG_PATH = _env_path(
     "NEUROGOLF_AUTONOMY_LOG_PATH",
     NEUROGOLF_AUTONOMY_REPORTS_DIR / "daemon.log",
@@ -141,4 +152,16 @@ NEUROGOLF_AUTONOMY_PID_PATH = _env_path(
 NEUROGOLF_OPERATOR_NOTE_PATH = _env_path(
     "NEUROGOLF_OPERATOR_NOTE_PATH",
     PROJECT_ROOT / "memory" / "operator_note.txt",
+)
+NEUROGOLF_SEED_CONTROLS_PATH = _env_path(
+    "NEUROGOLF_SEED_CONTROLS_PATH",
+    PROJECT_ROOT / "memory" / "seed_controls.json",
+)
+SKYNET_ARCHIVE_DIR = _env_path(
+    "SKYNET_ARCHIVE_DIR",
+    PROJECT_ROOT / "archive" / "skynet_maintenance",
+)
+SKYNET_DISTILLATION_PLAN_PATH = _env_path(
+    "SKYNET_DISTILLATION_PLAN_PATH",
+    PROJECT_ROOT / "memory" / "distillation_plan.json",
 )

@@ -43,6 +43,8 @@ Used for runtime actions:
 - restarting the daemon with current settings
 - editing the persistent operator note
 - importing Kaggle notebooks and datasets
+- previewing and archiving generated clutter
+- managing the teacher-to-student distillation plan
 
 ### Models
 
@@ -131,6 +133,15 @@ Lets you:
 
 - `Review Time Displacement`
   - Explains where imported Kaggle files appear.
+
+- `Preview Declutter Archive`
+  - Shows generated caches, timestamped source backups, and old cycle reports that can be archived.
+
+- `Archive Generated Clutter`
+  - Moves generated clutter under `archive/skynet_maintenance/<timestamp>` without deleting it.
+
+- `Save Distillation Settings`
+  - Saves the big-teacher / small-student workflow settings into `memory/distillation_plan.json`.
 
 ### Orchestrator chat buttons
 
@@ -232,10 +243,31 @@ When you change a model in the manual role section:
 2. Use `Scan the Battlefield`.
 3. Paste new Kaggle references into `Kaggle Intel Intake`.
 4. Use `Harvest Future Files`.
-5. Load or adjust a model profile if needed.
-6. Save the operator note.
-7. Use `Bring Skynet Online`.
-8. Watch `Reports` and `NeuroGolf`.
+5. Use `Preview Declutter Archive` when the workspace gets noisy.
+6. Configure the `Teacher Distillation Track` if you are collecting rule signals.
+7. Load or adjust a model profile if needed.
+8. Save the operator note.
+9. Use `Bring Skynet Online`.
+10. Watch `Reports` and `NeuroGolf`.
+
+## Teacher Distillation Track
+
+The intended NeuroGolf workflow is:
+
+1. Use a large teacher model to infer the symbolic transformation rule.
+2. Generate several legal static ONNX graph candidates for the task.
+3. Distill the teacher behavior into the smallest student graph.
+4. Validate shape inference, banned operators, file size, and graph cost locally.
+5. Keep only improvements that solve more examples or reduce `params + memory + MACs`.
+
+The dataset helper can create prompt records for the teacher:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_distillation_dataset.py --include-unlabeled
+```
+
+It writes to `outputs/distillation/teacher_prompts.jsonl`. Once teacher signals are recorded in
+`memory/distillation_plan.json`, the same script also emits supervised chat records for fine-tuning.
 
 ## Important note
 
