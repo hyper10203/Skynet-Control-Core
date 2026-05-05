@@ -1,45 +1,138 @@
-"""Self-improvement system for the ARC agent.
+"""Adaptive learning loop for the ARC/NeuroGolf agent.
 
-This module enables the AI to analyze its own performance and propose
-code improvements to achieve better efficiency and higher scores.
+This module keeps the autonomy system learning from recent cycle results
+without letting a weak local model rewrite source files blindly.
 """
 
 from __future__ import annotations
 
-import ast
 import json
-import re
-import shutil
-import subprocess
-import sys
-import tempfile
+from collections import Counter
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from core.config import (
-    MODEL_REGISTRY,
     NEUROGOLF_AUTONOMY_REPORTS_DIR,
-    PROJECT_ROOT,
+    NEUROGOLF_OPERATOR_AUTO_NOTE_PATH,
 )
-from core.executor import ask_with_fallback
-from core.prompts import SELF_IMPROVEMENT_SYSTEM_PROMPT
 
 SELF_IMPROVEMENT_LOG_PATH = NEUROGOLF_AUTONOMY_REPORTS_DIR / "self_improvement.jsonl"
+SELF_IMPROVEMENT_STATE_PATH = NEUROGOLF_AUTONOMY_REPORTS_DIR / "self_improvement_state.json"
 SELF_IMPROVEMENT_ENABLED_PATH = NEUROGOLF_AUTONOMY_REPORTS_DIR / "self_improvement_enabled"
-MAX_SELF_IMPROVEMENT_CYCLES = 3
-MIN_PERFORMANCE_THRESHOLD = 0.7  # Minimum success rate to trigger improvement
+MAX_SELF_IMPROVEMENT_CYCLES = 20
+MIN_PERFORMANCE_THRESHOLD = 0.7
 
 
 def _daemon_log(message: str) -> None:
     """Write to daemon log for debugging."""
-    # Avoid circular import by writing directly
-    from datetime import datetime, timezone
     log_path = NEUROGOLF_AUTONOMY_REPORTS_DIR / "daemon.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     with log_path.open("a", encoding="utf-8") as handle:
         handle.write(f"[{timestamp}] self_improvement:{message}\n")
+
+
+def _safe_float(value: object) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(value: object) -> int:
+    try:
+        if value is None or value == "":
+            return 0
+        return int(float(value))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _plan_key(report: dict) -> str:
+    plan = report.get("plan") if isinstance(report.get("plan"), dict) else {}
+    action = str(plan.get("action", "")).strip() or "-"
+    target = str(plan.get("target") or plan.get("seed_label") or "").strip() or "-"
+    mode = str(plan.get("mode") or plan.get("variant_hint") or "").strip() or "-"
+    return f"{action}|{target}|{mode}"
+
+
+def _normalized_reason(report: dict) -> str:
+    submit_result = report.get("submit_result") if isinstance(report.get("submit_result"), dict) else {}
+    return str(submit_result.get("reason", "")).strip().lower()
+
+
+def _latest_manifest_score(report: dict) -> float | None:
+    manifest = report.get("build_manifest") if isinstance(report.get("build_manifest"), dict) else {}
+    return (
+        _safe_float(manifest.get("estimated_live_score"))
+        or _safe_float(manifest.get("known_score"))
+        or _safe_float(manifest.get("total_score"))
+    )
+
+
+def _top_focus_tasks(report: dict, limit: int = 6) -> list[dict[str, object]]:
+    manifest = report.get("build_manifest") if isinstance(report.get("build_manifest"), dict) else {}
+    selected = manifest.get("selected")
+    if not isinstance(selected, list):
+        return []
+    ranked: list[dict[str, object]] = []
+    for item in selected:
+        if not isinstance(item, dict):
+            continue
+        task = str(item.get("task", "")).strip()
+        if not task:
+            continue
+        score = _safe_float(item.get("score"))
+        if score is None:
+            continue
+        params = _safe_int(item.get("params"))
+        memory = _safe_int(item.get("memory"))
+        macs = _safe_int(item.get("macs"))
+        ranked.append(
+            {
+                "task": task,
+                "score": round(score, 6),
+                "source": str(item.get("source", "")).strip(),
+                "params": params,
+                "memory": memory,
+                "macs": macs,
+                "cost_hint": params + memory + macs,
+            }
+        )
+    ranked.sort(key=lambda row: (float(row["score"]), -int(row["cost_hint"])))
+    return ranked[:limit]
+
+
+def _load_improvement_state() -> dict:
+    if not SELF_IMPROVEMENT_STATE_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(SELF_IMPROVEMENT_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _persist_improvement_state(state: dict) -> None:
+    SELF_IMPROVEMENT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    payload = dict(state)
+    payload["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    SELF_IMPROVEMENT_STATE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    note = str(state.get("operator_note", "")).strip()
+    if note:
+        NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.write_text(note + "\n", encoding="utf-8")
+    elif NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.exists():
+        NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.unlink()
+
+
+def _state_signature(payload: dict) -> str:
+    if not payload:
+        return ""
+    comparable = {key: value for key, value in payload.items() if key != "updated_at"}
+    return json.dumps(comparable, sort_keys=True)
 
 
 def is_self_improvement_enabled() -> bool:
@@ -49,15 +142,18 @@ def is_self_improvement_enabled() -> bool:
 
 def enable_self_improvement() -> None:
     """Enable the self-improvement system."""
+    SELF_IMPROVEMENT_ENABLED_PATH.parent.mkdir(parents=True, exist_ok=True)
     SELF_IMPROVEMENT_ENABLED_PATH.touch()
-    _daemon_log("Self-improvement enabled")
+    _daemon_log("adaptive learning enabled")
 
 
 def disable_self_improvement() -> None:
     """Disable the self-improvement system."""
     if SELF_IMPROVEMENT_ENABLED_PATH.exists():
         SELF_IMPROVEMENT_ENABLED_PATH.unlink()
-    _daemon_log("Self-improvement disabled")
+    if NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.exists():
+        NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.unlink()
+    _daemon_log("adaptive learning disabled")
 
 
 def load_improvement_history(limit: int = 50) -> list[dict]:
@@ -71,9 +167,11 @@ def load_improvement_history(limit: int = 50) -> list[dict]:
         if not line:
             continue
         try:
-            records.append(json.loads(line))
+            payload = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if isinstance(payload, dict):
+            records.append(payload)
     return records
 
 
@@ -94,325 +192,234 @@ def log_improvement_attempt(
         "reason": reason,
     }
     SELF_IMPROVEMENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with SELF_IMPROVEMENT_LOG_PATH.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, default=str) + "\n")
+    with SELF_IMPROVEMENT_LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, default=str) + "\n")
 
 
 def analyze_recent_performance(reports: list[dict]) -> dict[str, Any]:
-    """Analyze recent performance to identify improvement opportunities."""
+    """Analyze recent performance to identify learning opportunities."""
     if not reports:
         return {"status": "no_data", "recommendation": "Need more reports to analyze"}
 
     total = len(reports)
-    successes = sum(1 for r in reports if (r.get("submit_result") or {}).get("submitted"))
+    submissions = [report for report in reports if (report.get("submit_result") or {}).get("submitted")]
+    successes = len(submissions)
     failures = total - successes
+    branch_counts = Counter(_plan_key(report) for report in reports if _plan_key(report))
+    reason_counts = Counter(_normalized_reason(report) for report in reports if _normalized_reason(report))
+    latest_report = reports[0]
+    latest_branch = _plan_key(latest_report)
+    latest_reason = _normalized_reason(latest_report)
+    latest_manifest = latest_report.get("build_manifest") if isinstance(latest_report.get("build_manifest"), dict) else {}
+    latest_files = _safe_int(latest_manifest.get("files"))
+    latest_score = _latest_manifest_score(latest_report)
 
-    # Analyze score trends
-    scores = []
-    for r in reports:
-        plan = r.get("plan", {})
-        if plan.get("estimated_improvement"):
-            try:
-                scores.append(float(plan["estimated_improvement"]))
-            except (ValueError, TypeError):
-                pass
+    recent_streak = 0
+    for report in reports:
+        if _plan_key(report) != latest_branch:
+            break
+        recent_streak += 1
 
-    avg_score_improvement = sum(scores) / len(scores) if scores else 0
-    recent_trend = "improving" if len(scores) >= 3 and scores[-1] > scores[0] else "stable"
-
-    # CRITICAL: Check for V3 validation failures (dynamic shapes, invalid V2 files)
-    v3_validation_failures = []
-    v2_file_failures = []
-    for r in reports:
-        submit_result = r.get("submit_result", {})
-        reason = str(submit_result.get("reason", ""))
-        if "V3_VALIDATION_FAILED" in reason:
-            v3_validation_failures.append(r)
-        elif "invalid_base_tasks" in str(submit_result.get("v3_validation", {})):
-            v2_file_failures.append(r)
-
-    # Identify patterns
-    patterns = {
-        "total_cycles": total,
-        "success_rate": successes / total if total > 0 else 0,
-        "avg_score_improvement": avg_score_improvement,
-        "recent_trend": recent_trend,
-        "failures": failures,
-        "v3_validation_failures": len(v3_validation_failures),
-        "v2_file_failures": len(v2_file_failures),
+    focus_tasks = _top_focus_tasks(latest_report)
+    repeated_seed_loops = sum(
+        count
+        for key, count in branch_counts.items()
+        if key.startswith("direct_seed_pack|") and count >= 2
+    )
+    recoverable_reasons = {
+        "experiment already submitted",
+        "candidate matches current active pack",
+        "submission message already exists in recent history",
+        "delta_sum_local below threshold",
     }
+    blocked_repeat_count = sum(reason_counts.get(reason, 0) for reason in recoverable_reasons)
 
-    # Determine if improvement is needed
-    # CRITICAL: V3 validation failures are high priority to fix
     needs_improvement = (
-        patterns["success_rate"] < MIN_PERFORMANCE_THRESHOLD
-        or patterns["recent_trend"] != "improving"
-        or patterns["failures"] > 2
-        or len(v3_validation_failures) > 0  # Any V3 validation failure needs fixing
-        or len(v2_file_failures) > 0  # V2 files need to be rebuilt
+        (successes / total if total else 0.0) < MIN_PERFORMANCE_THRESHOLD
+        or recent_streak >= 2
+        or blocked_repeat_count > 0
+        or repeated_seed_loops > 0
+        or latest_files >= 400
+        or bool(focus_tasks)
     )
 
-    # Build specific recommendation based on failure type
-    recommendation = "Continue current strategy"
-    if v3_validation_failures or v2_file_failures:
-        recommendation = "CRITICAL: System is submitting V2-era invalid files. Need to implement V3-compliant file generation for dynamic-shape tasks."
-    elif needs_improvement:
-        recommendation = "Analyze codebase for optimization opportunities"
+    recommendation = "Hold steady and keep the current branch mix."
+    if latest_files >= 400 and latest_score is not None:
+        recommendation = (
+            "Treat the latest 400/400 pack as the baseline and chase per-task graph reductions "
+            "instead of restarting from raw seeds."
+        )
+    elif blocked_repeat_count > 0 or repeated_seed_loops > 0:
+        recommendation = "Stop replaying blocked seed families and rotate to materially new builds."
+    elif latest_files < 400:
+        recommendation = "Increase valid task coverage before spending a submission slot."
 
     return {
         "status": "needs_improvement" if needs_improvement else "performing_well",
-        "patterns": patterns,
+        "patterns": {
+            "total_cycles": total,
+            "success_rate": successes / total if total > 0 else 0.0,
+            "failures": failures,
+            "latest_branch": latest_branch,
+            "latest_reason": latest_reason,
+            "latest_files": latest_files,
+            "latest_score": latest_score,
+            "recent_branch_streak": recent_streak,
+            "blocked_repeat_count": blocked_repeat_count,
+            "repeated_seed_loops": repeated_seed_loops,
+            "top_branches": branch_counts.most_common(6),
+            "top_reasons": reason_counts.most_common(6),
+            "focus_tasks": focus_tasks,
+        },
         "recommendation": recommendation,
     }
 
 
-def get_core_modules_for_analysis() -> list[tuple[str, str]]:
-    """Get core module source code for analysis."""
-    modules = []
-    core_dir = PROJECT_ROOT / "core"
-    agent_dir = PROJECT_ROOT / "agents"
-
-    key_files = [
-        core_dir / "solver_loop.py",
-        core_dir / "neurogolf_context.py",
-        agent_dir / "coder.py",
-        agent_dir / "reasoning.py",
-        agent_dir / "orchestrator.py",
-        PROJECT_ROOT / "autonomous_neurogolf.py",
+def _format_operator_note(state: dict) -> str:
+    hints = state.get("planner_hints", [])
+    focus_tasks = state.get("focus_tasks", [])
+    lines = [
+        "Adaptive guidance:",
     ]
-
-    for path in key_files:
-        if path.exists():
-            try:
-                source = path.read_text(encoding="utf-8")
-                modules.append((str(path.relative_to(PROJECT_ROOT)), source))
-            except Exception:
-                pass
-
-    return modules
-
-
-def validate_python_code(code: str, filename: str = "<unknown>") -> dict:
-    """Validate Python code for syntax errors."""
-    try:
-        ast.parse(code, filename=filename)
-        return {"valid": True, "errors": []}
-    except SyntaxError as e:
-        return {
-            "valid": False,
-            "errors": [f"Syntax error at line {e.lineno}: {e.msg}"],
-        }
+    for hint in hints:
+        lines.append(f"- {hint}")
+    if focus_tasks:
+        formatted = ", ".join(
+            f"{item['task']} ({float(item['score']):.2f}, {item['source'] or 'unknown source'})"
+            for item in focus_tasks
+        )
+        lines.append(f"- Weakest current tasks to rebuild first: {formatted}.")
+    return "\n".join(lines)
 
 
-def apply_code_change(file_path: Path, original: str, replacement: str, reason: str) -> dict:
-    """Apply a code change to a file."""
-    if not file_path.exists():
-        return {"success": False, "error": f"File not found: {file_path}"}
+def build_improvement_state(reports: list[dict], analysis: dict[str, Any]) -> dict[str, Any]:
+    """Build a deterministic learning package for the next autonomy cycle."""
+    latest_report = reports[0]
+    latest_manifest = latest_report.get("build_manifest") if isinstance(latest_report.get("build_manifest"), dict) else {}
+    latest_branch = _plan_key(latest_report)
+    latest_score = _latest_manifest_score(latest_report)
+    latest_files = _safe_int(latest_manifest.get("files"))
+    latest_reason = _normalized_reason(latest_report)
+    latest_mode = str((latest_report.get("plan") or {}).get("mode") or "").strip()
+    latest_scope = str(latest_manifest.get("score_scope", "")).strip()
+    focus_tasks = analysis.get("patterns", {}).get("focus_tasks", [])
+    top_branches = analysis.get("patterns", {}).get("top_branches", [])
+    top_reasons = dict(analysis.get("patterns", {}).get("top_reasons", []))
 
-    try:
-        content = file_path.read_text(encoding="utf-8")
-
-        # Safety check: verify original exists exactly once
-        if content.count(original) != 1:
-            return {
-                "success": False,
-                "error": f"Original text appears {content.count(original)} times (expected 1)",
-            }
-
-        # Validate replacement code
-        validation = validate_python_code(replacement, str(file_path))
-        if not validation["valid"]:
-            return {
-                "success": False,
-                "error": f"Replacement code has syntax errors: {validation['errors']}",
-            }
-
-        # Create backup
-        backup_path = file_path.with_suffix(f".py.backup.{datetime.now():%Y%m%d%H%M%S}")
-        shutil.copy2(file_path, backup_path)
-
-        # Apply change
-        new_content = content.replace(original, replacement, 1)
-        file_path.write_text(new_content, encoding="utf-8")
-
-        # Test import
-        try:
-            # Try to import the module to catch runtime errors
-            spec = __import__("importlib.util").util.spec_from_file_location(
-                "test_module", file_path
+    hints: list[str] = []
+    if latest_files >= 400 and latest_score is not None:
+        hints.append(
+            f"Current 400/400 baseline is {latest_branch} at an estimated local score of {latest_score:.2f}; improve from that pack instead of resetting to seed-only submissions."
+        )
+    if latest_mode == "skip_known_dynamic":
+        hints.append(
+            "Keep skip_known_dynamic as the default fresh-build mode until another validated mode beats it on score or task quality."
+        )
+    if latest_scope == "profile_only":
+        hints.append(
+            "Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves."
+        )
+    if analysis.get("patterns", {}).get("recent_branch_streak", 0) >= 2:
+        hints.append(
+            f"Avoid rebuilding {latest_branch} unchanged; require a new source mix, repaired tasks, or a stronger validated candidate before repeating it."
+        )
+    if top_reasons.get("experiment already submitted", 0):
+        hints.append(
+            "Never resubmit the same experiment fingerprint. Change the artifact meaningfully before using a submission slot."
+        )
+    if top_reasons.get("submission message already exists in recent history", 0):
+        hints.append(
+            "Treat duplicate submission messages as a planner bug. Change both the artifact and the description together."
+        )
+    if analysis.get("patterns", {}).get("repeated_seed_loops", 0):
+        hints.append(
+            "Direct imported seed packs are reference material only. Keep the loop on fresh builds, validated repair packs, or targeted per-task replacements."
+        )
+    if latest_reason == "submission disabled" and latest_files >= 400:
+        hints.append(
+            "When submissions are enabled again, submit only after the pack differs from the active manifest and still validates 400/400 locally."
+        )
+    if latest_manifest.get("build_strategy") == "validated_repair":
+        hints.append(
+            "Prefer validated repair outputs over raw packs when their score stays close, because they preserve local validity evidence."
+        )
+    if top_branches:
+        dominant_key, dominant_count = top_branches[0]
+        if dominant_count >= 3:
+            hints.append(
+                f"The dominant recent branch is {dominant_key} ({dominant_count} cycles). Put new effort into weaker tasks rather than replaying the same branch."
             )
-            if spec and spec.loader:
-                module = __import__("importlib.util").util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-        except Exception as e:
-            # Rollback on import error
-            shutil.copy2(backup_path, file_path)
-            return {
-                "success": False,
-                "error": f"Import test failed: {e}. Changes rolled back.",
-            }
 
-        return {
-            "success": True,
-            "backup_path": str(backup_path),
-            "reason": reason,
-        }
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def generate_improvement_proposal(
-    performance_analysis: dict,
-    module_sources: list[tuple[str, str]],
-) -> dict:
-    """Ask the AI to propose code improvements."""
-    modules_summary = "\n\n".join([
-        f"=== {name} ===\n{source[:3000]}..." if len(source) > 3000 else f"=== {name} ===\n{source}"
-        for name, source in module_sources[:3]  # Limit to first 3 modules
-    ])
-
-    prompt = f"""Analyze the following performance data and source code, then propose specific code improvements.
-
-Performance Analysis:
-- Status: {performance_analysis.get('status')}
-- Patterns: {json.dumps(performance_analysis.get('patterns', {}), indent=2)}
-- Recommendation: {performance_analysis.get('recommendation')}
-
-Source Code (key modules):
-{modules_summary}
-
-Based on this analysis, propose concrete code improvements that would:
-1. Increase success rate of submissions
-2. Improve efficiency (faster processing, better parameter counting)
-3. Better adapt to the April 28 metric changes (static shapes required)
-
-Return JSON with this structure:
-{{
-    "analysis_summary": "Brief analysis of what needs improvement",
-    "proposed_changes": [
-        {{
-            "file": "relative/path/to/file.py",
-            "original": "exact code to replace (must match exactly)",
-            "replacement": "new code to insert",
-            "reason": "why this change improves performance"
-        }}
-    ],
-    "confidence": 0.8,  // 0-1 confidence in these changes
-    "expected_impact": "description of expected performance improvement"
-}}
-
-IMPORTANT:
-- Original code must match exactly (including whitespace)
-- Proposed changes must be syntactically valid Python
-- Focus on high-impact, low-risk improvements
-- Do not change core logic dramatically - optimize existing approaches
-"""
-
-    response = ask_with_fallback(
-        model=MODEL_REGISTRY.get("orchestrator", "llama3.1"),
-        prompt=prompt,
-        system=SELF_IMPROVEMENT_SYSTEM_PROMPT,
+    summary = (
+        "Adaptive learning is steering the planner toward gradual, competition-intended progress: "
+        "keep the strongest 400/400 baseline, avoid repeated seed loops, and rebuild the weakest per-task graphs first."
     )
 
-    # Extract JSON from response
-    try:
-        # Look for JSON block
-        json_match = re.search(r'\{[\s\S]*\}', response)
-        if json_match:
-            return json.loads(json_match.group())
-        return {"error": "No valid JSON found in response", "raw_response": response}
-    except json.JSONDecodeError as e:
-        return {"error": f"JSON parse error: {e}", "raw_response": response}
+    state: dict[str, Any] = {
+        "mode": "adaptive_learning",
+        "analysis_summary": summary,
+        "recommendation": analysis.get("recommendation", ""),
+        "latest_branch": latest_branch,
+        "latest_reason": latest_reason,
+        "latest_mode": latest_mode,
+        "latest_files": latest_files,
+        "baseline_estimated_score": latest_score,
+        "planner_hints": hints,
+        "focus_tasks": focus_tasks,
+    }
+    state["operator_note"] = _format_operator_note(state)
+    return state
 
 
 def run_self_improvement_cycle(reports: list[dict]) -> dict:
-    """Run one self-improvement cycle."""
+    """Run one adaptive learning cycle."""
     if not is_self_improvement_enabled():
         return {"status": "disabled", "reason": "Self-improvement not enabled"}
 
-    # Check recent improvement attempts to avoid loops
-    history = load_improvement_history(limit=10)
-    recent_attempts = [h for h in history if h.get("applied")]
-    if len(recent_attempts) >= MAX_SELF_IMPROVEMENT_CYCLES:
-        return {
-            "status": "throttled",
-            "reason": f"Max {MAX_SELF_IMPROVEMENT_CYCLES} improvements reached recently",
-        }
-
-    # Analyze performance
     analysis = analyze_recent_performance(reports)
-    if analysis.get("status") != "needs_improvement":
+    if analysis.get("status") == "no_data":
+        return {"status": "no_data", "reason": "Need more reports to analyze", "analysis": analysis}
+
+    proposal = build_improvement_state(reports, analysis)
+    current_state = _load_improvement_state()
+    changed = _state_signature(current_state) != _state_signature(proposal)
+    if not changed:
         return {
             "status": "no_action",
-            "reason": "Performance is acceptable, no improvements needed",
+            "reason": "Adaptive guidance is unchanged",
             "analysis": analysis,
+            "proposal": proposal,
+            "applied_changes": [],
+            "failed_changes": [],
         }
 
-    # Get source code
-    modules = get_core_modules_for_analysis()
-    if not modules:
-        return {"status": "error", "reason": "Could not load source modules"}
-
-    # Generate improvement proposal
-    proposal = generate_improvement_proposal(analysis, modules)
-    if proposal.get("error"):
-        log_improvement_attempt(
-            analysis=str(analysis),
-            proposed_changes=[],
-            validation_result=None,
-            applied=False,
-            reason=f"Proposal generation failed: {proposal.get('error')}",
-        )
-        return {"status": "error", "reason": proposal.get("error")}
-
-    # Validate and apply changes
-    changes = proposal.get("proposed_changes", [])
-    if not changes:
-        return {
-            "status": "no_changes",
-            "reason": "No changes proposed",
-            "analysis": analysis,
-        }
-
-    # Apply changes one by one
-    applied_changes = []
-    failed_changes = []
-
-    for change in changes:
-        file_path = PROJECT_ROOT / change["file"]
-        result = apply_code_change(
-            file_path,
-            change["original"],
-            change["replacement"],
-            change.get("reason", "Self-improvement"),
-        )
-
-        if result["success"]:
-            applied_changes.append({
-                "file": change["file"],
-                "reason": change.get("reason"),
-                "backup": result.get("backup_path"),
-            })
-        else:
-            failed_changes.append({
-                "file": change["file"],
-                "error": result.get("error"),
-            })
-
-    # Log the attempt
+    _persist_improvement_state(proposal)
+    applied_changes = [
+        {
+            "file": str(SELF_IMPROVEMENT_STATE_PATH),
+            "reason": "Updated adaptive learning state",
+        },
+        {
+            "file": str(NEUROGOLF_OPERATOR_AUTO_NOTE_PATH),
+            "reason": "Updated automatic operator guidance",
+        },
+    ]
     log_improvement_attempt(
         analysis=proposal.get("analysis_summary", ""),
-        proposed_changes=changes,
-        validation_result={"applied": applied_changes, "failed": failed_changes},
-        applied=len(applied_changes) > 0,
-        reason=f"Applied {len(applied_changes)} changes, failed {len(failed_changes)}" if applied_changes else "No changes applied",
+        proposed_changes=[{"type": "planner_hint", "text": hint} for hint in proposal.get("planner_hints", [])],
+        validation_result={
+            "artifacts": applied_changes,
+            "focus_tasks": proposal.get("focus_tasks", []),
+            "recommendation": proposal.get("recommendation", ""),
+        },
+        applied=True,
+        reason="Updated adaptive planner guidance from recent cycle evidence",
     )
-
+    _daemon_log("adaptive guidance updated")
     return {
-        "status": "completed" if applied_changes else "failed",
+        "status": "learned",
         "applied_changes": applied_changes,
-        "failed_changes": failed_changes,
+        "failed_changes": [],
         "analysis": analysis,
         "proposal": proposal,
     }
@@ -421,7 +428,7 @@ def run_self_improvement_cycle(reports: list[dict]) -> dict:
 def get_improvement_status() -> dict:
     """Get current self-improvement status for UI."""
     history = load_improvement_history(limit=20)
-    recent_applied = [h for h in history if h.get("applied")]
+    recent_applied = [item for item in history if item.get("applied")]
 
     return {
         "enabled": is_self_improvement_enabled(),
@@ -429,4 +436,5 @@ def get_improvement_status() -> dict:
         "recent_improvements": len(recent_applied),
         "max_cycles": MAX_SELF_IMPROVEMENT_CYCLES,
         "last_attempt": history[-1] if history else None,
+        "state": _load_improvement_state(),
     }

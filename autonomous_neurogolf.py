@@ -19,6 +19,7 @@ from core.config import (
     MODEL_REGISTRY,
     NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT,
     NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS,
+    NEUROGOLF_AUTONOMY_FRESH_BUILD_MODE,
     NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD,
     NEUROGOLF_AUTONOMY_LOG_PATH,
     NEUROGOLF_AUTONOMY_LOOP_SECONDS,
@@ -28,6 +29,7 @@ from core.config import (
     NEUROGOLF_AUTONOMY_RECENT_REPORT_LIMIT,
     NEUROGOLF_AUTONOMY_REPORTS_DIR,
     NEUROGOLF_AUTONOMY_STATUS_PATH,
+    NEUROGOLF_OPERATOR_AUTO_NOTE_PATH,
     NEUROGOLF_OPERATOR_NOTE_PATH,
     NEUROGOLF_PACKAGE_SCRIPT,
     NEUROGOLF_PROJECT_ROOT,
@@ -91,9 +93,16 @@ def _write_status(phase: str, message: str, *, progress: float, extra: dict | No
 
 
 def _load_operator_note() -> str:
-    if not NEUROGOLF_OPERATOR_NOTE_PATH.exists():
-        return ""
-    return NEUROGOLF_OPERATOR_NOTE_PATH.read_text(encoding="utf-8").strip()
+    notes: list[str] = []
+    if NEUROGOLF_OPERATOR_NOTE_PATH.exists():
+        manual_note = NEUROGOLF_OPERATOR_NOTE_PATH.read_text(encoding="utf-8").strip()
+        if manual_note:
+            notes.append(manual_note)
+    if NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.exists():
+        auto_note = NEUROGOLF_OPERATOR_AUTO_NOTE_PATH.read_text(encoding="utf-8").strip()
+        if auto_note:
+            notes.append(auto_note)
+    return "\n\n".join(notes).strip()
 
 
 def _compact_summary(summary: dict) -> str:
@@ -194,6 +203,8 @@ def _available_cached_candidates(summary: dict) -> list[dict]:
             numeric_hint = float(score_hint) if score_hint is not None else 0.0
         except (TypeError, ValueError):
             numeric_hint = 0.0
+        validation_status = str(item.get("validation_status", "")).strip().lower() or "unknown"
+        is_validated = validation_status == "valid" or str(item.get("build_strategy", "")).strip() == "validated_repair"
         candidates.append(
             {
                 "target": path.name,
@@ -202,12 +213,14 @@ def _available_cached_candidates(summary: dict) -> list[dict]:
                 "variant": item.get("mode") or item.get("build_strategy") or "",
                 "score_hint": numeric_hint,
                 "updated_at": item.get("updated_at", ""),
+                "validation_status": validation_status,
+                "validated": is_validated,
                 "manifest_name": item.get("name", ""),
             }
         )
     # Sort by updated_at (newest first), then by score_hint (highest first)
     # Prioritizes recent submissions over historical high scores
-    candidates.sort(key=lambda row: (row["updated_at"], row["score_hint"]), reverse=True)
+    candidates.sort(key=lambda row: (row["validated"], row["updated_at"], row["score_hint"]), reverse=True)
     return candidates
 
 
@@ -634,7 +647,7 @@ def _coerce_plan_schema(plan: dict, summary: dict) -> dict:
         coerced["seed_label"] = ""
     elif token in {"fresh_build", "build_from_scratch", "new_build"}:
         coerced["action"] = "scorer_blend_build"
-        coerced["mode"] = "strict_known"
+        coerced["mode"] = _default_fresh_build_mode()
         coerced["seed_label"] = ""
         coerced["should_submit"] = False  # Build first, submit after validation
     elif token in {"sync_only"}:
@@ -1143,8 +1156,37 @@ def _find_cached_seed_manifest(seed_label: str, mode: str) -> dict | None:
     return None
 
 
-def _find_cached_blend_manifest(mode: str) -> dict | None:
+def _default_fresh_build_mode() -> str:
+    return _normalize_blend_variant(NEUROGOLF_AUTONOMY_FRESH_BUILD_MODE or "skip_known_dynamic")
+
+
+def _infer_blend_mode_from_manifest(payload: dict, mode_hint: str = "") -> str:
+    explicit = str(payload.get("mode", "")).strip()
+    if explicit:
+        return _normalize_blend_variant(explicit)
+    score_scope = str(payload.get("score_scope", "")).strip().lower()
+    if score_scope == "known_examples_only":
+        return "strict_known"
+    source_counts = payload.get("source_counts")
+    if isinstance(source_counts, dict) and any(str(name).startswith("sanitized_") for name in source_counts):
+        return "skip_known_dynamic_sanitized"
+    if score_scope == "profile_only":
+        return "skip_known_dynamic"
+    return _normalize_blend_variant(mode_hint or _default_fresh_build_mode())
+
+
+def _normalize_cached_blend_manifest(path: Path, payload: dict, mode_hint: str = "") -> dict:
+    manifest = dict(payload)
+    manifest["build_strategy"] = "scorer_blend"
+    manifest["mode"] = _infer_blend_mode_from_manifest(manifest, mode_hint)
+    manifest["_manifest_path"] = str(path)
+    return manifest
+
+
+def _find_cached_blend_manifest(mode: str, zip_name: str) -> dict | None:
     outputs_dir = NEUROGOLF_PROJECT_ROOT / "outputs"
+    best_manifest: dict | None = None
+    best_rank: tuple[int, int] = (-1, -1)
     for path in sorted(outputs_dir.glob("*manifest*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1152,16 +1194,56 @@ def _find_cached_blend_manifest(mode: str) -> dict | None:
             continue
         if not isinstance(payload, dict):
             continue
-        if payload.get("build_strategy") != "scorer_blend":
+        zip_path = Path(str(payload.get("zip_path", "")).strip())
+        if not zip_path.exists():
             continue
-        if payload.get("mode") != mode:
+        build_strategy = str(payload.get("build_strategy", "")).strip()
+        if build_strategy != "scorer_blend" and path.name != "submission_manifest.json":
+            continue
+        normalized = _normalize_cached_blend_manifest(path, payload, mode)
+        if normalized.get("mode") != mode:
+            continue
+        if path.name == "submission_manifest.json" and zip_path.name != zip_name:
+            normalized["zip_path"] = str(zip_path)
+        has_score = int(normalized.get("known_score") not in (None, "") or normalized.get("estimated_live_score") not in (None, ""))
+        is_generic = int(path.name == "submission_manifest.json")
+        rank = (has_score, is_generic)
+        if rank > best_rank:
+            best_rank = rank
+            best_manifest = normalized
+    return best_manifest
+
+
+def _load_latest_blend_manifest(manifest_path: Path, mode: str, zip_name: str) -> dict:
+    best_manifest: dict | None = None
+    best_rank: tuple[int, int] = (-1, -1)
+    for path in (manifest_path, manifest_path.with_name("submission_manifest.json")):
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        build_strategy = str(payload.get("build_strategy", "")).strip()
+        if path.name != "submission_manifest.json" and build_strategy != "scorer_blend":
             continue
         zip_path = Path(str(payload.get("zip_path", "")).strip())
         if not zip_path.exists():
             continue
-        payload["_manifest_path"] = str(path)
-        return payload
-    return None
+        normalized = _normalize_cached_blend_manifest(path, payload, mode)
+        if normalized.get("mode") != mode and path.name != "submission_manifest.json":
+            continue
+        has_score = int(normalized.get("known_score") not in (None, "") or normalized.get("estimated_live_score") not in (None, ""))
+        is_generic = int(path.name == "submission_manifest.json")
+        rank = (has_score, is_generic)
+        if rank > best_rank:
+            best_rank = rank
+            best_manifest = normalized
+    if best_manifest is not None:
+        return best_manifest
+    raise RuntimeError(f"scorer_blend did not produce a readable manifest for {zip_name}")
 
 
 def _find_cached_candidate(summary: dict, target: str) -> dict | None:
@@ -1307,8 +1389,8 @@ Default behavior:
                 "action": "scorer_blend_build",
                 "seed_label": "",
                 "target": "",
-                "variant_hint": "strict_known",
-                "mode": "strict_known",
+                "variant_hint": _default_fresh_build_mode(),
+                "mode": _default_fresh_build_mode(),
                 "should_submit": False,  # Build first, validate, then submit
                 "rationale": "FRESH BUILD: No valid seeds available. Building 400 new minimal networks from scratch.",
                 "submission_message": "Fresh build - creating new V3-compliant networks from scratch",
@@ -1450,7 +1532,7 @@ def run_seed_preserving_build(zip_name: str, seed_label: str, mode: str) -> dict
 
 
 def run_scorer_blend_build(zip_name: str, mode: str) -> dict:
-    cached = _find_cached_blend_manifest(mode)
+    cached = _find_cached_blend_manifest(mode, zip_name)
     output_zip = NEUROGOLF_PROJECT_ROOT / "outputs" / zip_name
     manifest_path = NEUROGOLF_PROJECT_ROOT / "outputs" / f"{Path(zip_name).stem}_manifest.json"
     if cached is not None:
@@ -1490,10 +1572,13 @@ def run_scorer_blend_build(zip_name: str, mode: str) -> dict:
     if include_sanitized:
         command.append("-IncludeSanitized")
     _run_external_build(command, label="scorer_blend", target="open_blend", variant=mode)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = _load_latest_blend_manifest(manifest_path, mode, zip_name)
+    manifest["zip_path"] = str(output_zip)
+    manifest["zip_size_bytes"] = output_zip.stat().st_size
     manifest["build_strategy"] = "scorer_blend"
     manifest["mode"] = mode
     manifest["manifest_path"] = str(manifest_path)
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     _daemon_log(
         "build:done "
         f"strategy=scorer_blend mode={mode} known={manifest.get('known_score')} "
@@ -1558,7 +1643,7 @@ def _materialize_plan(plan: dict, summary: dict, campaign: dict) -> dict:
         else:
             # No valid seeds available - force blend build to create fresh networks
             action = "scorer_blend_build"
-            mode = "strict_known"
+            mode = _default_fresh_build_mode()
             seed_label = ""
             display_variant = mode
 
@@ -1970,18 +2055,18 @@ def run_cycle(args: argparse.Namespace) -> dict:
             report["attempts"] = attempts
             action = str(final_attempt["plan"].get("action", action))
 
-    NEUROGOLF_AUTONOMY_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    report_path = NEUROGOLF_AUTONOMY_REPORTS_DIR / f"cycle_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    _persist_learning_state(_learning_from_reports([report] + reports))
-    _daemon_log(f"cycle:report {report_path}")
-
     # Run self-improvement cycle if enabled
     if is_self_improvement_enabled():
         _write_status("improving", "Analyzing performance for self-improvement", progress=0.95)
         improvement_result = run_self_improvement_cycle([report] + reports)
         _daemon_log(f"self_improvement:result status={improvement_result.get('status')} applied={len(improvement_result.get('applied_changes', []))}")
         report["self_improvement"] = improvement_result
+
+    NEUROGOLF_AUTONOMY_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    report_path = NEUROGOLF_AUTONOMY_REPORTS_DIR / f"cycle_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    _persist_learning_state(_learning_from_reports([report] + reports))
+    _daemon_log(f"cycle:report {report_path}")
 
     _write_status("idle", "Cycle complete", progress=1.0, extra={"latest_report": str(report_path)})
     return {"report_path": str(report_path), "action": action, "report": report}

@@ -318,6 +318,84 @@ def _json_or_none(path: Path) -> dict | list | None:
         return None
 
 
+def _infer_blend_mode(payload: dict) -> str | None:
+    mode = str(payload.get("mode", "")).strip()
+    if mode:
+        return mode
+    score_scope = str(payload.get("score_scope", "")).strip().lower()
+    if score_scope == "known_examples_only":
+        return "strict_known"
+    source_counts = payload.get("source_counts")
+    if isinstance(source_counts, dict) and any(str(name).startswith("sanitized_") for name in source_counts):
+        return "skip_known_dynamic_sanitized"
+    if score_scope == "profile_only":
+        return "skip_known_dynamic"
+    return None
+
+
+def _normalized_output_manifest(path: Path, payload: dict) -> dict:
+    row = dict(payload)
+    build_strategy = str(row.get("build_strategy", "")).strip()
+    if not build_strategy:
+        if path.name == "submission_manifest.json":
+            build_strategy = "scorer_blend"
+        elif path.name.endswith("_validated_manifest.json"):
+            build_strategy = "validated_repair"
+        elif row.get("seed_label") and row.get("artifact_path"):
+            build_strategy = "direct_seed_pack"
+        elif row.get("seed_label") and row.get("mode"):
+            build_strategy = "seed_preserving"
+        elif row.get("source_zip"):
+            build_strategy = "cached_candidate_submit"
+    row["build_strategy"] = build_strategy or None
+
+    if build_strategy == "scorer_blend" and not row.get("mode"):
+        inferred_mode = _infer_blend_mode(row)
+        if inferred_mode:
+            row["mode"] = inferred_mode
+
+    if build_strategy == "validated_repair":
+        row["validation_status"] = "valid"
+        source_zip = Path(str(row.get("source_zip", "")).strip()) if str(row.get("source_zip", "")).strip() else None
+        if source_zip is not None:
+            candidate_manifests = [NEUROGOLF_OUTPUTS_DIR / f"{source_zip.stem}_manifest.json", NEUROGOLF_OUTPUTS_DIR / "submission_manifest.json"]
+            best_source_row: dict | None = None
+            best_source_manifest: Path | None = None
+            for source_manifest in candidate_manifests:
+                source_payload = _json_or_none(source_manifest)
+                if not isinstance(source_payload, dict):
+                    continue
+                source_row = _normalized_output_manifest(source_manifest, source_payload)
+                source_zip_path = Path(str(source_row.get("zip_path", "")).strip()) if str(source_row.get("zip_path", "")).strip() else None
+                if source_zip_path is None or source_zip_path != source_zip:
+                    continue
+                if best_source_row is None:
+                    best_source_row = source_row
+                    best_source_manifest = source_manifest
+                if source_row.get("known_score") not in (None, "") or source_row.get("estimated_live_score") not in (None, ""):
+                    best_source_row = source_row
+                    best_source_manifest = source_manifest
+                    break
+            if best_source_row is not None and best_source_manifest is not None:
+                for key in (
+                    "seed_label",
+                    "mode",
+                    "files",
+                    "replaced_count",
+                    "delta_sum_local",
+                    "known_score",
+                    "estimated_live_score",
+                    "score_scope",
+                ):
+                    if row.get(key) in (None, "") and best_source_row.get(key) not in (None, ""):
+                        row[key] = best_source_row.get(key)
+                row["source_manifest_path"] = str(best_source_manifest)
+    else:
+        row["validation_status"] = str(row.get("validation_status", "")).strip() or "unknown"
+
+    return row
+
+
 def _recent_output_manifests(limit: int = 12) -> list[dict]:
     manifests: list[dict] = []
     if not NEUROGOLF_OUTPUTS_DIR.exists():
@@ -330,11 +408,14 @@ def _recent_output_manifests(limit: int = 12) -> list[dict]:
         payload = _json_or_none(path)
         if not isinstance(payload, dict):
             continue
+        payload = _normalized_output_manifest(path, payload)
         manifests.append(
             {
                 "path": str(path),
                 "name": path.name,
                 "updated_at": datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds"),
+                "build_strategy": payload.get("build_strategy"),
+                "validation_status": payload.get("validation_status"),
                 "seed_label": payload.get("seed_label"),
                 "mode": payload.get("mode"),
                 "files": payload.get("files"),
@@ -342,8 +423,10 @@ def _recent_output_manifests(limit: int = 12) -> list[dict]:
                 "delta_sum_local": payload.get("delta_sum_local"),
                 "zip_path": payload.get("zip_path"),
                 "zip_size_bytes": payload.get("zip_size_bytes"),
+                "score_scope": payload.get("score_scope"),
                 "known_score": payload.get("known_score"),
                 "estimated_live_score": payload.get("estimated_live_score"),
+                "source_zip": payload.get("source_zip"),
             }
         )
     return manifests

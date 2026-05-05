@@ -1303,30 +1303,33 @@ def render_dashboard() -> None:
             key=control_widget_key("max_pending_submissions"),
         )
 
-        # Self-improvement controls
+        # Adaptive learning controls
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-        st.markdown('<div class="panel"><h4>Self-Improvement System</h4><div class="panel-copy">Enable the AI to analyze its own code and propose optimizations for better performance.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Adaptive Learning Loop</h4><div class="panel-copy">Turn recent cycle evidence into planner guidance, weak-task focus lists, and safer automatic operating notes.</div></div>', unsafe_allow_html=True)
 
         si_enabled = is_self_improvement_enabled()
         si_status = get_improvement_status()
 
         si_col1, si_col2, si_col3 = st.columns([1, 1, 2])
         with si_col1:
-            if st.button("Enable Self-Improvement" if not si_enabled else "Self-Improvement Active", width="stretch", disabled=si_enabled):
+            if st.button("Enable Adaptive Learning" if not si_enabled else "Adaptive Learning Active", width="stretch", disabled=si_enabled):
                 enable_self_improvement()
-                st.success("Self-improvement enabled. The system will analyze and optimize its own code.")
+                st.success("Adaptive learning enabled. New cycles will write automatic guidance from recent results.")
                 st.rerun()
         with si_col2:
-            if st.button("Disable Self-Improvement" if si_enabled else "Self-Improvement Inactive", width="stretch", disabled=not si_enabled):
+            if st.button("Disable Adaptive Learning" if si_enabled else "Adaptive Learning Inactive", width="stretch", disabled=not si_enabled):
                 disable_self_improvement()
-                st.warning("Self-improvement disabled.")
+                st.warning("Adaptive learning disabled.")
                 st.rerun()
         with si_col3:
-            st.metric("Recent Improvements", f"{si_status['recent_improvements']}/{si_status['max_cycles']}")
+            st.metric("Learning Updates", si_status["recent_improvements"])
 
         if si_status['last_attempt']:
             last = si_status['last_attempt']
-            st.caption(f"Last attempt: {last.get('timestamp', 'unknown')} | Applied: {last.get('applied', False)} | {last.get('reason', 'N/A')[:60]}...")
+            st.caption(f"Last update: {last.get('timestamp', 'unknown')} | Applied: {last.get('applied', False)} | {last.get('reason', 'N/A')[:80]}...")
+        note_preview = str((si_status.get("state") or {}).get("operator_note", "")).strip()
+        if note_preview:
+            st.code(note_preview, language="text")
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
         st.markdown('<div class="panel"><h4>Core Maintenance</h4><div class="panel-copy">Archive generated caches, old cycle reports, and source backups without deleting evidence or source files.</div></div>', unsafe_allow_html=True)
