@@ -1,4 +1,4 @@
-"""Non-destructive maintenance helpers for Skynet Control Core."""
+"""Non-destructive maintenance helpers for AxiomGraph Operations Core."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def find_clutter() -> list[dict[str, Any]]:
 
 
 def archive_clutter(*, dry_run: bool = False) -> dict[str, Any]:
-    """Archive generated clutter under archive/skynet_maintenance.
+    """Archive generated clutter under the configured maintenance archive folder.
 
     Files are moved, not deleted. Source files, memory controls, current status,
     current learning state, and recent cycle reports are left in place.

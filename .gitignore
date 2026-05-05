@@ -17,4 +17,6 @@ outputs/submission_state.json
 outputs/*.log
 kaggle/skynet-distill-student/
 kaggle/skynet-distill-data/
+kaggle/axiomgraph-distill-student/
+kaggle/axiomgraph-distill-data/
 run_dashboard - Shortcut.lnk

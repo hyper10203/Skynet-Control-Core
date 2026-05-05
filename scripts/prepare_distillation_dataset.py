@@ -27,14 +27,73 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", type=Path, default=PROJECT_ROOT / "outputs" / "distillation" / "teacher_prompts.jsonl")
     parser.add_argument("--include-unlabeled", action="store_true", help="Write prompt-only records when no teacher signal exists.")
     parser.add_argument("--limit", type=int, default=0, help="0 means all tasks.")
+    parser.add_argument("--max-train", type=int, default=3)
+    parser.add_argument("--max-test", type=int, default=1)
+    parser.add_argument("--max-arc-gen", type=int, default=1)
+    parser.add_argument("--max-grid-cells", type=int, default=81)
+    parser.add_argument("--preview-size", type=int, default=8)
     return parser
 
 
-def _compact_examples(task: dict[str, Any]) -> dict[str, Any]:
+def _grid_summary(grid: Any, *, max_cells: int, preview_size: int) -> Any:
+    if not isinstance(grid, list):
+        return grid
+    height = len(grid)
+    width = max((len(row) for row in grid if isinstance(row, list)), default=0)
+    cells = height * width
+    if cells <= max_cells:
+        return grid
+
+    values: list[int] = []
+    nonzero_points: list[tuple[int, int]] = []
+    for row_index, row in enumerate(grid):
+        if not isinstance(row, list):
+            continue
+        for col_index, value in enumerate(row):
+            if isinstance(value, int):
+                values.append(value)
+                if value != 0:
+                    nonzero_points.append((row_index, col_index))
+    if nonzero_points:
+        rows = [point[0] for point in nonzero_points]
+        cols = [point[1] for point in nonzero_points]
+        bbox = [min(rows), min(cols), max(rows), max(cols)]
+    else:
+        bbox = []
     return {
-        "train": task.get("train", []),
-        "test": task.get("test", []),
-        "arc-gen": task.get("arc-gen", []),
+        "shape": [height, width],
+        "palette": sorted(set(values)),
+        "nonzero_count": len(nonzero_points),
+        "nonzero_bbox": bbox,
+        "preview": [row[:preview_size] if isinstance(row, list) else row for row in grid[:preview_size]],
+        "summary_note": "large grid summarized to keep distillation records inside the training token budget",
+    }
+
+
+def _compact_pair(pair: Any, *, max_cells: int, preview_size: int, keep_output: bool = True) -> Any:
+    if not isinstance(pair, dict):
+        return pair
+    compact = dict(pair)
+    compact["input"] = _grid_summary(compact.get("input"), max_cells=max_cells, preview_size=preview_size)
+    if keep_output and "output" in compact:
+        compact["output"] = _grid_summary(compact.get("output"), max_cells=max_cells, preview_size=preview_size)
+    elif not keep_output:
+        compact.pop("output", None)
+    return compact
+
+
+def _compact_examples(task: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    max_cells = max(16, int(args.max_grid_cells))
+    preview_size = max(4, int(args.preview_size))
+    def compact_many(key: str, count: int, *, keep_output: bool = True) -> list[Any]:
+        return [
+            _compact_pair(item, max_cells=max_cells, preview_size=preview_size, keep_output=keep_output)
+            for item in task.get(key, [])[: max(0, int(count))]
+        ]
+    return {
+        "train": compact_many("train", max(1, int(args.max_train))),
+        "test": compact_many("test", max(0, int(args.max_test)), keep_output=False),
+        "arc-gen": compact_many("arc-gen", max(0, int(args.max_arc_gen))),
     }
 
 
@@ -96,7 +155,7 @@ def main() -> int:
                 task = json.loads(path.read_text(encoding="utf-8"))
             except Exception:
                 continue
-            examples = _compact_examples(task)
+            examples = _compact_examples(task, args)
             task_signals = signals.get(task_id, [])
             if task_signals:
                 for signal in task_signals:

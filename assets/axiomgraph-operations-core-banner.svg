@@ -1,0 +1,61 @@
+<svg width="1600" height="520" viewBox="0 0 1600 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F1115"/>
+      <stop offset="0.48" stop-color="#151923"/>
+      <stop offset="1" stop-color="#101820"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="240" y1="110" x2="1360" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14B8A6"/>
+      <stop offset="0.48" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <filter id="blurA" x="-60" y="-60" width="1720" height="640" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="520" rx="36" fill="url(#bg)"/>
+
+  <g opacity="0.22">
+    <path d="M0 362H1600" stroke="#94A3B8" stroke-width="1"/>
+    <path d="M0 398H1600" stroke="#94A3B8" stroke-width="1"/>
+    <path d="M120 0V520" stroke="#94A3B8" stroke-width="1"/>
+    <path d="M260 0V520" stroke="#94A3B8" stroke-width="1"/>
+    <path d="M1380 0V520" stroke="#94A3B8" stroke-width="1"/>
+  </g>
+
+  <g opacity="0.8">
+    <path d="M92 94H590" stroke="url(#glow)" stroke-width="3"/>
+    <path d="M1010 426H1508" stroke="url(#glow)" stroke-width="3"/>
+  </g>
+
+  <g>
+    <rect x="86" y="72" width="1428" height="376" rx="8" fill="rgba(17,24,39,0.68)" stroke="rgba(148,163,184,0.34)"/>
+    <rect x="118" y="108" width="540" height="18" rx="4" fill="#1F2937"/>
+    <rect x="118" y="108" width="146" height="18" rx="4" fill="#14B8A6"/>
+    <rect x="118" y="388" width="300" height="12" rx="4" fill="#1F2937"/>
+    <rect x="118" y="388" width="160" height="12" rx="4" fill="#38BDF8"/>
+  </g>
+
+  <g>
+    <text x="118" y="172" fill="#14B8A6" font-size="24" font-family="Inter, Arial, sans-serif" letter-spacing="0">LOCAL GRAPH OPERATIONS</text>
+    <text x="118" y="262" fill="#F8FAFC" font-size="58" font-weight="700" font-family="Inter, Arial, sans-serif">AXIOMGRAPH OPERATIONS CORE</text>
+    <text x="118" y="320" fill="#A8B1C2" font-size="28" font-family="JetBrains Mono, Consolas, monospace">
+      Local ARC and NeuroGolf orchestration with multi-model routing,
+    </text>
+    <text x="118" y="356" fill="#A8B1C2" font-size="28" font-family="JetBrains Mono, Consolas, monospace">
+      Kaggle automation, memory, live telemetry, and operator control.
+    </text>
+  </g>
+
+  <g transform="translate(1088 124)">
+    <circle cx="152" cy="68" r="58" fill="#111827" stroke="#38BDF8" stroke-width="3"/>
+    <circle cx="152" cy="68" r="34" fill="none" stroke="#14B8A6" stroke-width="4"/>
+    <circle cx="152" cy="68" r="12" fill="#F59E0B"/>
+    <path d="M38 214H268" stroke="#14B8A6" stroke-width="3"/>
+    <path d="M38 244H268" stroke="#38BDF8" stroke-width="3"/>
+    <path d="M38 274H222" stroke="#F59E0B" stroke-width="3"/>
+    <rect x="22" y="18" width="260" height="280" rx="8" stroke="rgba(148,163,184,0.38)" stroke-width="2"/>
+  </g>
+</svg>

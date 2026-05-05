@@ -1,16 +1,16 @@
-# Skynet Control Core Guide
+# AxiomGraph Operations Core Guide
 
 This file explains the local GUI, the autonomy controls, the model team, and the Kaggle intake workflow.
 
 ## What this system is
 
-`Skynet Control Core` is the Streamlit dashboard for the ARC and NeuroGolf agent stack.
+`AxiomGraph Operations Core` is the Streamlit dashboard for the ARC and NeuroGolf agent stack.
 
 It controls:
 
 - the autonomous NeuroGolf daemon
 - the local Ollama model team
-- Kaggle source harvesting
+- Kaggle source intake
 - ARC task visualization
 - model role and context configuration
 
@@ -26,7 +26,7 @@ Shows:
 - current daemon status
 - current rank
 - latest completed public score
-- current mission phase
+- current run phase
 - live daemon log tail
 - score trend over time
 - operator note preview
@@ -98,47 +98,47 @@ Lets you:
 
 ### Control buttons
 
-- `Refresh Intel`
+- `Refresh Data`
   - Clears cached dashboard data and refreshes the page immediately.
 
-- `Bring Skynet Online`
+- `Start Autonomy`
   - Starts the autonomous NeuroGolf daemon with the current control settings.
 
-- `Destroy Skynet`
+- `Stop And Reset`
   - Stops the autonomous daemon.
 
-- `Send a T-800`
+- `Run One Cycle`
   - Runs one autonomy cycle once without waiting for the full background loop.
 
-- `Scan the Battlefield`
+- `Sync Kaggle State`
   - Re-syncs local NeuroGolf outputs and Kaggle submission history into memory.
 
-- `Cyberdyne Diagnostics`
+- `Run Healthcheck`
   - Runs the model health check against the current Ollama stack.
 
-- `Reboot the Time Core`
+- `Restart Daemon`
   - Restarts the daemon using the current settings in the control tab.
 
-- `Rewrite the Future`
+- `Save Operator Note`
   - Saves the operator note.
 
-- `Erase the Timeline`
+- `Clear Operator Note`
   - Clears the operator note.
 
-- `Arm Judgment Day`
+- `Apply Operator Note`
   - Saves the operator note so future autonomy cycles use it.
 
-- `Harvest Future Files`
+- `Import Kaggle Sources`
   - Pulls Kaggle notebooks or datasets from pasted URLs or CLI lines.
 
-- `Review Time Displacement`
+- `Show Import Location`
   - Explains where imported Kaggle files appear.
 
 - `Preview Declutter Archive`
   - Shows generated caches, timestamped source backups, and old cycle reports that can be archived.
 
 - `Archive Generated Clutter`
-  - Moves generated clutter under `archive/skynet_maintenance/<timestamp>` without deleting it.
+  - Moves generated clutter under the configured archive folder without deleting it.
 
 - `Save Distillation Settings`
   - Saves the big-teacher / small-student workflow settings into `memory/distillation_plan.json`.
@@ -156,16 +156,16 @@ Lets you:
 - `Load Into Roles`
   - Loads the selected model profile into the editable role fields without saving yet.
 
-- `Install Neural Chip`
+- `Save Profile`
   - Saves the selected model profile into `.env`.
 
-- `Judgment Day Upgrade`
+- `Apply Profile And Restart`
   - Saves the selected model profile into `.env` and restarts the daemon.
 
 - `Use My Installed Best Models`
   - Detects the strongest profile that matches your locally installed Ollama models and loads it into the role editor.
 
-- `Override the Neural Net`
+- `Save Manual Role Overrides`
   - Saves the current role dropdown values and their context lengths into `.env`.
 
 - `Reset Contexts To Model Defaults`
@@ -213,7 +213,7 @@ The three strategists produce different views, the coder turns them into concret
 
 ## Kaggle intake format
 
-You can paste any mix of these into the `Kaggle Intel Intake` box:
+You can paste any mix of these into the `Kaggle Source Intake` box:
 
 - `https://www.kaggle.com/code/owner/slug`
 - `https://www.kaggle.com/datasets/owner/slug`
@@ -240,14 +240,14 @@ When you change a model in the manual role section:
 ## Typical safe workflow
 
 1. Open the dashboard.
-2. Use `Scan the Battlefield`.
-3. Paste new Kaggle references into `Kaggle Intel Intake`.
-4. Use `Harvest Future Files`.
+2. Use `Sync Kaggle State`.
+3. Paste new Kaggle references into `Kaggle Source Intake`.
+4. Use `Import Kaggle Sources`.
 5. Use `Preview Declutter Archive` when the workspace gets noisy.
 6. Configure the `Teacher Distillation Track` if you are collecting rule signals.
 7. Load or adjust a model profile if needed.
 8. Save the operator note.
-9. Use `Bring Skynet Online`.
+9. Use `Start Autonomy`.
 10. Watch `Reports` and `NeuroGolf`.
 
 ## Teacher Distillation Track
@@ -275,9 +275,9 @@ The dashboard saves configuration to `.env`, but a running daemon only adopts th
 
 Use:
 
-- `Reboot the Time Core`
-- or `Judgment Day Upgrade`
+- `Restart Daemon`
+- or `Apply Profile And Restart`
 
 when you want the live autonomy loop to pick up changed roles or contexts.
 
-Control values in the flight deck are now also persisted, so sleep time, pending submission cap, history depth, and submission permission stay stable across reruns and daemon restarts.
+Control values are persisted, so sleep time, pending submission cap, history depth, and submission permission stay stable across reruns and daemon restarts.

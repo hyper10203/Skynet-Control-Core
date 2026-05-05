@@ -1,11 +1,11 @@
-# Skynet Control Core
+# AxiomGraph Operations Core
 
 <p align="center">
-  <img src="assets/skynet-control-core-banner.svg" alt="Skynet Control Core banner" width="100%" />
+  <img src="assets/axiomgraph-operations-core-banner.svg" alt="AxiomGraph Operations Core banner" width="100%" />
 </p>
 
 <p align="center">
-  <strong>Local-first ARC and NeuroGolf orchestration with Ollama, Kaggle automation, and a live sci-fi control center.</strong>
+  <strong>Local-first ARC and NeuroGolf orchestration with Ollama, Kaggle automation, and a professional operations console.</strong>
 </p>
 
 <p align="center">
@@ -23,12 +23,12 @@
 
 ## What This Is
 
-Skynet Control Core is a local AI operations stack for:
+AxiomGraph Operations Core is a local AI operations stack for:
 
 - ARC-style symbolic reasoning
 - NeuroGolf submission optimization
 - multi-model orchestration through Ollama
-- Kaggle source harvesting and score-aware submission workflows
+- Kaggle source intake and score-aware submission workflows
 - live monitoring through a Streamlit GUI
 
 You talk to one front-door system. It decides when to keep work local and when to wake specialist models.
@@ -60,7 +60,7 @@ This repo is built to be a proper control surface:
 
 ```mermaid
 flowchart LR
-    User["Operator"] --> GUI["Skynet Control Core GUI"]
+    User["Operator"] --> GUI["AxiomGraph Operations Core GUI"]
     GUI --> Orch["Orchestrator"]
     GUI --> Fast["Fast Operator Link"]
     Orch --> R1["Primary Reasoner"]
@@ -152,7 +152,7 @@ For remote control from other devices:
 The control center includes:
 
 - live daemon and telemetry overview
-- flight-deck controls for starting, stopping, syncing, and running cycles
+- operations controls for starting, stopping, syncing, and running cycles
 - model profile management
 - NeuroGolf leaderboard and submission state
 - ARC visualizer

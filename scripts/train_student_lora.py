@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import sys
 from pathlib import Path
 
@@ -68,10 +69,17 @@ def main() -> int:
     from peft import LoraConfig
     from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
     from trl import SFTTrainer
+    try:
+        from trl import SFTConfig
+    except ImportError:
+        SFTConfig = None
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    max_seq_length = int(args.max_seq_length)
+    if not tokenizer.model_max_length or tokenizer.model_max_length > max_seq_length:
+        tokenizer.model_max_length = max_seq_length
 
     model_kwargs = {
         "trust_remote_code": True,
@@ -95,28 +103,43 @@ def main() -> int:
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
     )
 
-    training_args = TrainingArguments(
-        output_dir=str(args.out),
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=int(args.grad_accum),
-        num_train_epochs=float(args.epochs),
-        learning_rate=float(args.lr),
-        logging_steps=5,
-        save_steps=50,
-        save_total_limit=2,
-        fp16=torch.cuda.is_available(),
-        report_to=[],
-    )
+    training_kwargs = {
+        "output_dir": str(args.out),
+        "per_device_train_batch_size": 1,
+        "gradient_accumulation_steps": int(args.grad_accum),
+        "num_train_epochs": float(args.epochs),
+        "learning_rate": float(args.lr),
+        "logging_steps": 5,
+        "save_steps": 50,
+        "save_total_limit": 2,
+        "fp16": torch.cuda.is_available(),
+        "report_to": [],
+    }
+    sft_config_params = inspect.signature(SFTConfig.__init__).parameters if SFTConfig is not None else {}
+    if SFTConfig is not None and "max_length" in sft_config_params:
+        training_kwargs["max_length"] = max_seq_length
+        training_args = SFTConfig(**training_kwargs)
+    elif SFTConfig is not None and "max_seq_length" in sft_config_params:
+        training_kwargs["max_seq_length"] = max_seq_length
+        training_args = SFTConfig(**training_kwargs)
+    else:
+        training_args = TrainingArguments(**training_kwargs)
 
-    trainer = SFTTrainer(
-        model=model,
-        tokenizer=tokenizer,
-        train_dataset=dataset,
-        formatting_func=formatting_func,
-        peft_config=peft_config,
-        args=training_args,
-        max_seq_length=int(args.max_seq_length),
-    )
+    trainer_kwargs = {
+        "model": model,
+        "train_dataset": dataset,
+        "formatting_func": formatting_func,
+        "peft_config": peft_config,
+        "args": training_args,
+    }
+    trainer_params = inspect.signature(SFTTrainer.__init__).parameters
+    if "processing_class" in trainer_params:
+        trainer_kwargs["processing_class"] = tokenizer
+    elif "tokenizer" in trainer_params:
+        trainer_kwargs["tokenizer"] = tokenizer
+    if "max_seq_length" in trainer_params:
+        trainer_kwargs["max_seq_length"] = max_seq_length
+    trainer = SFTTrainer(**trainer_kwargs)
     trainer.train()
     trainer.save_model(str(args.out))
     print({"saved": str(args.out)})

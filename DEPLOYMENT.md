@@ -6,7 +6,7 @@ This project is best deployed as a self-hosted dashboard with:
 
 - a running Ollama server
 - access to your NeuroGolf workspace
-- optional Kaggle credentials for source harvesting and submissions
+- optional Kaggle credentials for source intake and submissions
 
 The GUI can run in a container, but the model server and competition workspace are usually external resources.
 

@@ -159,7 +159,7 @@ NEUROGOLF_SEED_CONTROLS_PATH = _env_path(
 )
 SKYNET_ARCHIVE_DIR = _env_path(
     "SKYNET_ARCHIVE_DIR",
-    PROJECT_ROOT / "archive" / "skynet_maintenance",
+    PROJECT_ROOT / "archive" / "axiomgraph_maintenance",
 )
 SKYNET_DISTILLATION_PLAN_PATH = _env_path(
     "SKYNET_DISTILLATION_PLAN_PATH",

@@ -28,7 +28,7 @@ from core.self_improvement import (
     load_improvement_history,
 )
 from core.runtime_control import (
-    archive_skynet_clutter,
+    archive_skynet_clutter as archive_generated_clutter,
     current_role_map,
     daemon_status,
     fetch_kaggle_targets,
@@ -49,7 +49,7 @@ from core.runtime_control import (
     save_operator_note,
     save_distillation_settings,
     save_imported_seed_controls,
-    skynet_clutter_summary,
+    skynet_clutter_summary as generated_clutter_summary,
     start_daemon,
     stop_daemon,
     sync_state,
@@ -57,53 +57,60 @@ from core.runtime_control import (
 )
 
 
-st.set_page_config(page_title="Skynet Control Core", page_icon="S", layout="wide")
+APP_NAME = "AxiomGraph Operations Core"
+APP_SHORT_NAME = "AxiomGraph"
+
+st.set_page_config(page_title=APP_NAME, page_icon="A", layout="wide")
 
 THEME_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-    --bg-0: #02060d;
-    --bg-1: #07121b;
-    --bg-2: #091d28;
-    --line: rgba(127, 255, 238, 0.18);
-    --line-hot: rgba(255, 73, 132, 0.28);
-    --ink: #e9fdff;
-    --sub: #8fb8c3;
-    --aqua: #7fffee;
-    --cyan: #20beff;
-    --pink: #ff4984;
+    --bg-0: #0f1115;
+    --bg-1: #151923;
+    --bg-2: #101820;
+    --line: rgba(148, 163, 184, 0.24);
+    --line-hot: rgba(245, 158, 11, 0.46);
+    --ink: #f8fafc;
+    --sub: #a8b1c2;
+    --aqua: #14b8a6;
+    --cyan: #38bdf8;
+    --pink: #f43f5e;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
 }
 
 .stApp {
-    background:
-        radial-gradient(circle at 10% 18%, rgba(0, 255, 209, 0.12), transparent 23%),
-        radial-gradient(circle at 85% 15%, rgba(255, 73, 132, 0.10), transparent 24%),
-        linear-gradient(150deg, var(--bg-0) 0%, var(--bg-1) 38%, var(--bg-2) 64%, var(--bg-0) 100%);
+    background: linear-gradient(135deg, var(--bg-0) 0%, var(--bg-1) 52%, var(--bg-2) 100%);
     color: var(--ink);
 }
 
 html, body, [class*="css"] {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter', sans-serif;
+}
+
+pre, code, .stCode, [data-testid="stCodeBlock"] {
+    font-family: 'JetBrains Mono', monospace !important;
 }
 
 h1, h2, h3, .stTabs [data-baseweb="tab"] {
-    font-family: 'Orbitron', sans-serif !important;
-    letter-spacing: 0.04em;
+    font-family: 'Inter', sans-serif !important;
+    letter-spacing: 0;
 }
 
 .top-shell {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(127, 255, 238, 0.22);
-    border-radius: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
     padding: 1.25rem 1.4rem;
     margin-bottom: 1rem;
     background:
-        linear-gradient(135deg, rgba(127,255,238,0.07), rgba(32,190,255,0.06) 55%, rgba(255,73,132,0.08)),
-        rgba(4, 10, 17, 0.88);
-    box-shadow: 0 0 34px rgba(0, 255, 209, 0.12);
+        linear-gradient(135deg, rgba(20,184,166,0.10), rgba(56,189,248,0.07) 56%, rgba(245,158,11,0.08)),
+        rgba(15, 17, 21, 0.92);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.24);
 }
 
 .hero-grid {
@@ -142,9 +149,9 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 
 .badge-chip {
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: 6px;
     padding: 0.36rem 0.78rem;
-    background: rgba(6, 14, 22, 0.82);
+    background: rgba(17, 24, 39, 0.82);
     color: var(--aqua);
     font-size: 0.8rem;
     transition: all 0.2s ease;
@@ -194,16 +201,16 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 
 .panel {
     border: 1px solid var(--line);
-    border-radius: 22px;
+    border-radius: 8px;
     padding: 1rem 1rem 0.95rem 1rem;
-    background: rgba(5, 11, 18, 0.76);
-    box-shadow: 0 0 18px rgba(0, 255, 209, 0.07);
+    background: rgba(17, 24, 39, 0.74);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
 .panel h4 {
     margin: 0 0 0.55rem 0;
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 0.04em;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0;
     color: var(--ink);
 }
 
@@ -222,9 +229,9 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 
 .status-card {
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 8px;
     padding: 0.85rem 0.9rem;
-    background: linear-gradient(180deg, rgba(10,20,30,0.95), rgba(4,10,17,0.95));
+    background: linear-gradient(180deg, rgba(17,24,39,0.95), rgba(15,17,21,0.95));
     transition: all 0.2s ease;
 }
 
@@ -246,7 +253,7 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     margin-top: 0.3rem;
     color: var(--ink);
     font-size: 1.35rem;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 .status-sub {
@@ -263,32 +270,32 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     margin-right: 0.3rem;
 }
 
-.status-online { background: #2ECC40; box-shadow: 0 0 8px #2ECC40; animation: pulse-green 2s infinite; }
-.status-offline { background: #FF4136; box-shadow: 0 0 8px #FF4136; }
-.status-warning { background: #FFDC00; box-shadow: 0 0 8px #FFDC00; animation: pulse-yellow 2s infinite; }
+.status-online { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse-green 2s infinite; }
+.status-offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+.status-warning { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse-yellow 2s infinite; }
 .status-info { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
 
 @keyframes pulse-green {
-    0%, 100% { box-shadow: 0 0 8px #2ECC40; opacity: 1; }
-    50% { box-shadow: 0 0 16px #2ECC40; opacity: 0.8; }
+    0%, 100% { box-shadow: 0 0 8px var(--success); opacity: 1; }
+    50% { box-shadow: 0 0 16px var(--success); opacity: 0.8; }
 }
 
 @keyframes pulse-yellow {
-    0%, 100% { box-shadow: 0 0 8px #FFDC00; opacity: 1; }
-    50% { box-shadow: 0 0 16px #FFDC00; opacity: 0.8; }
+    0%, 100% { box-shadow: 0 0 8px var(--warning); opacity: 1; }
+    50% { box-shadow: 0 0 16px var(--warning); opacity: 0.8; }
 }
 
 .alert-banner {
     border: 1px solid var(--line-hot);
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 1rem 1.2rem;
-    background: linear-gradient(135deg, rgba(255,73,132,0.12), rgba(255,73,132,0.06));
+    background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(244,63,94,0.07));
     margin-bottom: 1rem;
 }
 
 .alert-title {
     color: var(--pink);
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1rem;
     margin-bottom: 0.5rem;
     display: flex;
@@ -297,7 +304,7 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 }
 
 .alert-text {
-    color: #e9fdff;
+    color: var(--ink);
     font-size: 0.9rem;
     line-height: 1.5;
 }
@@ -305,19 +312,19 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 .metric-highlight {
     background: linear-gradient(135deg, rgba(127,255,238,0.15), rgba(32,190,255,0.1));
     border: 1px solid rgba(127,255,238,0.25);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 0.6rem 1rem;
     margin: 0.5rem 0;
 }
 
 /* Improve Streamlit's default info/success/warning boxes */
 [data-testid="stAlert"] {
-    border-radius: 16px !important;
+    border-radius: 8px !important;
     border: 1px solid var(--line) !important;
 }
 
 [data-testid="stAlert"] > div {
-    background: rgba(5, 12, 19, 0.9) !important;
+    background: rgba(17, 24, 39, 0.9) !important;
 }
 
 /* Success - green tint */
@@ -341,25 +348,25 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
 [data-testid="stMetric"] {
     background: rgba(5, 12, 19, 0.74);
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 8px;
     padding: 0.72rem;
 }
 
 div.stButton > button {
-    border-radius: 999px;
-    border: 1px solid rgba(127, 255, 238, 0.22);
-    background: linear-gradient(135deg, rgba(127,255,238,0.16), rgba(32,190,255,0.18));
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: linear-gradient(135deg, rgba(20,184,166,0.18), rgba(56,189,248,0.14));
     color: var(--ink);
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+    font-family: 'Inter', sans-serif;
+    font-weight: 650;
+    letter-spacing: 0;
     transition: all 0.2s ease;
 }
 
 div.stButton > button:hover {
     border-color: var(--aqua);
-    background: linear-gradient(135deg, rgba(127,255,238,0.25), rgba(32,190,255,0.28));
-    box-shadow: 0 0 20px rgba(127, 255, 238, 0.25);
+    background: linear-gradient(135deg, rgba(20,184,166,0.25), rgba(56,189,248,0.22));
+    box-shadow: 0 12px 24px rgba(20, 184, 166, 0.16);
     transform: translateY(-1px);
 }
 
@@ -374,9 +381,9 @@ div.stButton > button:disabled {
 }
 
 .stProgress > div > div > div > div {
-    background: linear-gradient(90deg, var(--aqua), var(--cyan) 50%, var(--pink) 100%);
-    border-radius: 999px;
-    box-shadow: 0 0 10px rgba(127, 255, 238, 0.4);
+    background: linear-gradient(90deg, var(--aqua), var(--cyan) 55%, var(--warning) 100%);
+    border-radius: 6px;
+    box-shadow: none;
 }
 
 .section-divider {
@@ -387,7 +394,7 @@ div.stButton > button:disabled {
 }
 
 .subsection-header {
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.1rem;
     color: var(--ink);
     margin: 1.2rem 0 0.8rem 0;
@@ -404,13 +411,13 @@ div[data-baseweb="select"] > div,
 .stNumberInput input {
     background: rgba(4, 11, 18, 0.82) !important;
     color: var(--ink) !important;
-    border-radius: 14px !important;
+    border-radius: 6px !important;
 }
 
 .stTabs [data-baseweb="tab"] {
     background: rgba(5, 12, 19, 0.72);
     border: 1px solid var(--line);
-    border-radius: 14px;
+    border-radius: 6px;
     color: #d8f7ff;
     padding: 0.5rem 0.9rem;
 }
@@ -418,13 +425,13 @@ div[data-baseweb="select"] > div,
 .auth-shell {
     max-width: 760px;
     margin: 4vh auto 0 auto;
-    border: 1px solid rgba(127, 255, 238, 0.22);
-    border-radius: 28px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
     padding: 1.6rem;
     background:
-        linear-gradient(135deg, rgba(127,255,238,0.08), rgba(32,190,255,0.05) 55%, rgba(255,73,132,0.08)),
-        rgba(4, 10, 17, 0.9);
-    box-shadow: 0 0 34px rgba(0, 255, 209, 0.12);
+        linear-gradient(135deg, rgba(20,184,166,0.10), rgba(56,189,248,0.06) 55%, rgba(245,158,11,0.08)),
+        rgba(15, 17, 21, 0.93);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.24);
 }
 
 .auth-title {
@@ -455,7 +462,7 @@ div[data-baseweb="select"] > div,
 @media (max-width: 700px) {
     .top-shell {
         padding: 1rem;
-        border-radius: 22px;
+        border-radius: 8px;
     }
     .hero-title {
         font-size: 1.6rem;
@@ -576,9 +583,9 @@ def render_auth_gate(env_settings: dict[str, str]) -> None:
         """
         <div class="auth-shell">
           <div class="hero-kicker">Secure Access Layer</div>
-          <h1 class="auth-title">Skynet Control Core</h1>
+          <h1 class="auth-title">AxiomGraph Operations Core</h1>
           <div class="auth-copy">
-            This deployment is locked. Enter the control password to access the dashboard, daemon controls,
+            This deployment is locked. Enter the workspace password to access the dashboard, daemon controls,
             ARC visualizer, and NeuroGolf automation surfaces.
           </div>
         </div>
@@ -588,8 +595,8 @@ def render_auth_gate(env_settings: dict[str, str]) -> None:
 
     col_left, col_mid, col_right = st.columns([1, 1.3, 1])
     with col_mid:
-        password = st.text_input("Control password", type="password", key=AUTH_INPUT_KEY)
-        if st.button("Unlock Time Core", width="stretch"):
+        password = st.text_input("Workspace password", type="password", key=AUTH_INPUT_KEY)
+        if st.button("Unlock Console", width="stretch"):
             expected = configured_ui_password(env_settings)
             if hmac.compare_digest(password, expected):
                 st.session_state[AUTH_STATE_KEY] = True
@@ -992,9 +999,9 @@ def render_sidebar_fragment() -> None:
     
     latest_completed = current_completed_submission(submissions)
 
-    st.title("Resistance Console")
+    st.title("Operations Console")
     st.caption("Auto refresh cadence: every 5 minutes")
-    if st.button("Refresh Intel", width="stretch"):
+    if st.button("Refresh Data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
@@ -1003,14 +1010,14 @@ def render_sidebar_fragment() -> None:
     st.metric("Rank", fmt_value(rank_info.get("rank"), digits=0))
     st.metric("Latest Score", fmt_value(latest_completed.get("public_score")))
     st.metric("Best Public", fmt_value(state.get("best_completed_public_score")))
-    st.metric("Pending Subs", fmt_value(state.get("pending_submission_count"), digits=0))
+    st.metric("Pending Submissions", fmt_value(state.get("pending_submission_count"), digits=0))
     if team_name:
         st.caption(f"Team: {team_name}")
     st.caption(f"Remote: {endpoints.get('recommended_remote', 'n/a')}")
-    if ui_requires_password(env_settings) and st.button("Lock Time Core", width="stretch"):
+    if ui_requires_password(env_settings) and st.button("Lock Console", width="stretch"):
         st.session_state[AUTH_STATE_KEY] = False
         st.rerun()
-    if st.button("Log Out of Judgment Day", width="stretch"):
+    if st.button("Sign Out And Stop", width="stretch"):
         shutdown_and_logout()
         st.rerun()
 
@@ -1093,22 +1100,22 @@ def render_dashboard() -> None:
     daemon_badge_text = "ONLINE" if daemon.get("running") else "OFFLINE"
     si_enabled = is_self_improvement_enabled()
     si_badge_class = "badge-online" if si_enabled else "badge-offline"
-    si_badge_text = "🧠 SI ON" if si_enabled else "🧠 SI OFF"
+    si_badge_text = "SI ON" if si_enabled else "SI OFF"
     comp_data = state.get("competition_data", {})
     comp_ready = comp_data.get("ready", False)
     comp_badge_class = "badge-online" if comp_ready else "badge-offline"
-    comp_badge_text = "🏆 DATA READY" if comp_ready else "🏆 NO DATA"
+    comp_badge_text = "DATA READY" if comp_ready else "NO DATA"
 
     st.markdown(
         f"""
         <div class="top-shell">
           <div class="hero-grid">
             <div>
-              <div class="hero-kicker">Cyberdyne Operations Deck</div>
-              <h1 class="hero-title">Skynet Control Core</h1>
+              <div class="hero-kicker">Local ARC and NeuroGolf Operations</div>
+              <h1 class="hero-title">AxiomGraph Operations Core</h1>
               <div class="hero-copy">
-                A live control surface for your ARC and NeuroGolf machine with daemon control, Kaggle harvesting,
-                model-role management, submission telemetry, and an ARC task recon chamber.
+                A focused workbench for ARC reasoning and NeuroGolf graph optimization with daemon control,
+                Kaggle source intake, model-role management, submission telemetry, and ARC task review.
               </div>
               <div class="badge-row">
                 <div class="badge-chip {daemon_badge_class}">● {daemon_badge_text}</div>
@@ -1146,8 +1153,8 @@ def render_dashboard() -> None:
     else:
         phase_indicator = "status-info"  # Blue for active work
 
-    # Show FRESH START indicator when daemon was reset
-    phase_display = f"{phase} 🆕 FRESH START" if is_reset else phase
+    # Show fresh-start state when daemon memory was reset.
+    phase_display = f"{phase} | fresh start" if is_reset else phase
 
     st.markdown(
         f"""
@@ -1181,8 +1188,8 @@ def render_dashboard() -> None:
     progress_color = "#2ECC40" if progress >= 0.8 else "#FFDC00" if progress >= 0.4 else "#FF4136"
     st.markdown(
         f"""
-        <div style="text-align: center; color: {progress_color}; font-family: 'Orbitron', sans-serif; font-size: 0.85rem; margin-top: 0.3rem;">
-            Mission Completion: {progress * 100:.0f}%
+        <div style="text-align: center; color: {progress_color}; font-family: 'Inter', sans-serif; font-size: 0.85rem; margin-top: 0.3rem;">
+            Run Progress: {progress * 100:.0f}%
         </div>
         """,
         unsafe_allow_html=True,
@@ -1195,7 +1202,7 @@ def render_dashboard() -> None:
     with tab_overview:
         left_col, right_col = st.columns([1.02, 0.98])
         with left_col:
-            st.markdown('<div class="panel"><h4>Mission Telemetry</h4><div class="panel-copy">Live state from the daemon, planner, and Kaggle memory.</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="panel"><h4>Runtime Telemetry</h4><div class="panel-copy">Live state from the daemon, planner, and Kaggle memory.</div></div>', unsafe_allow_html=True)
             st.json(
                 {
                     "daemon": daemon,
@@ -1207,16 +1214,16 @@ def render_dashboard() -> None:
                 }
             )
         with right_col:
-            st.markdown('<div class="panel"><h4>What It Is Working On</h4><div class="panel-copy">Current mission lane, chosen seed family, and latest autonomous decision point.</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="panel"><h4>Current Workstream</h4><div class="panel-copy">Active lane, chosen seed family, and latest autonomous decision point.</div></div>', unsafe_allow_html=True)
             st.markdown(f"**Phase:** `{status.get('phase', 'idle')}`")
-            st.markdown(f"**Message:** {status.get('message', 'No active mission text yet.')}")
+            st.markdown(f"**Message:** {status.get('message', 'No active workstream text yet.')}")
             st.markdown(f"**Latest plan action:** `{latest_plan.get('action', 'n/a')}`")
             st.markdown(f"**Latest plan target:** `{latest_plan.get('target') or latest_plan.get('seed_label', 'n/a')}`")
             st.markdown(f"**Latest plan variant:** `{latest_plan.get('variant_hint') or latest_plan.get('mode', 'n/a')}`")
             st.markdown(f"**Latest submit decision:** `{latest_submit.get('reason', 'n/a')}`")
             if daemon.get("status_stale"):
                 st.warning(f"Daemon status looks stale: last update was about {fmt_value(daemon.get('status_age_seconds'))} seconds ago.")
-            st.subheader("Signal Feed")
+            st.subheader("Daemon Log")
             st.code(tail_log(80) or "No daemon log yet.", language="text")
 
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
@@ -1229,13 +1236,13 @@ def render_dashboard() -> None:
             else:
                 st.info("No completed public scores have been synced yet.")
         with note_col:
-            st.markdown('<div class="panel"><h4>Mission Flags</h4><div class="panel-copy">Persistent steering and imported source count.</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="panel"><h4>Runtime Flags</h4><div class="panel-copy">Persistent steering and imported source count.</div></div>', unsafe_allow_html=True)
 
-            st.metric("📦 Imported sources", len(imported_sources))
+            st.metric("Imported Sources", len(imported_sources))
 
             # Target Score metric removed - targets disabled, all valid submissions allowed
 
-            st.markdown("<div style='margin-top: 1rem;'><strong>📝 Operator Note</strong></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 1rem;'><strong>Operator Note</strong></div>", unsafe_allow_html=True)
             st.code((operator_note().strip() or "No persistent steering note saved.")[:900], language="text")
 
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
@@ -1263,13 +1270,13 @@ def render_dashboard() -> None:
             st.markdown("- Keep the UI password enabled for deployed access.")
 
     with tab_control:
-        st.markdown('<div class="panel"><h4>Autonomy Flight Deck</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and harvest Kaggle sources.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Autonomy Controls</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and import Kaggle sources.</div></div>', unsafe_allow_html=True)
         allow_submit = st.checkbox(
             "Allow Kaggle submissions",
             key=control_widget_key("allow_submit"),
         )
         history = st.number_input(
-            "Intel history depth",
+            "History depth",
             min_value=3,
             max_value=100,
             key=control_widget_key("history"),
@@ -1305,12 +1312,12 @@ def render_dashboard() -> None:
 
         si_col1, si_col2, si_col3 = st.columns([1, 1, 2])
         with si_col1:
-            if st.button("🧠 Enable Self-Improvement" if not si_enabled else "✅ Self-Improvement Active", width="stretch", disabled=si_enabled):
+            if st.button("Enable Self-Improvement" if not si_enabled else "Self-Improvement Active", width="stretch", disabled=si_enabled):
                 enable_self_improvement()
-                st.success("Self-improvement enabled! The AI will now analyze and optimize its own code.")
+                st.success("Self-improvement enabled. The system will analyze and optimize its own code.")
                 st.rerun()
         with si_col2:
-            if st.button("🛑 Disable Self-Improvement" if si_enabled else "⏸️ Self-Improvement Inactive", width="stretch", disabled=not si_enabled):
+            if st.button("Disable Self-Improvement" if si_enabled else "Self-Improvement Inactive", width="stretch", disabled=not si_enabled):
                 disable_self_improvement()
                 st.warning("Self-improvement disabled.")
                 st.rerun()
@@ -1323,16 +1330,16 @@ def render_dashboard() -> None:
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
         st.markdown('<div class="panel"><h4>Core Maintenance</h4><div class="panel-copy">Archive generated caches, old cycle reports, and source backups without deleting evidence or source files.</div></div>', unsafe_allow_html=True)
-        clutter = skynet_clutter_summary()
+        clutter = generated_clutter_summary()
         maint_cols = st.columns([1, 1, 2])
         maint_cols[0].metric("Declutter Items", clutter.get("count", 0))
         maint_cols[1].metric("Archive Size", format_bytes(clutter.get("total_bytes", 0)))
         maint_cols[2].caption(", ".join(f"{kind}: {count}" for kind, count in clutter.get("by_kind", {}).items()) or "No generated clutter detected.")
         maint_buttons = st.columns(2)
         if maint_buttons[0].button("Preview Declutter Archive", width="stretch"):
-            set_action_result("Declutter preview complete.", archive_skynet_clutter(dry_run=True))
+            set_action_result("Declutter preview complete.", archive_generated_clutter(dry_run=True))
         if maint_buttons[1].button("Archive Generated Clutter", width="stretch"):
-            set_action_result("Generated clutter archived.", archive_skynet_clutter(dry_run=False))
+            set_action_result("Generated clutter archived.", archive_generated_clutter(dry_run=False))
             st.rerun()
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
@@ -1362,7 +1369,7 @@ def render_dashboard() -> None:
             st.rerun()
 
         top_actions = st.columns(4)
-        if top_actions[0].button("Bring Skynet Online", width="stretch"):
+        if top_actions[0].button("Start Autonomy", width="stretch"):
             set_action_result(
                 "Autonomy daemon start requested.",
                 start_daemon(
@@ -1374,24 +1381,24 @@ def render_dashboard() -> None:
                 ),
             )
             st.rerun()
-        if top_actions[1].button("Destroy Skynet", width="stretch"):
+        if top_actions[1].button("Stop And Reset", width="stretch"):
             set_action_result(
-                "Skynet destroyed. Learning state cleared - next start will begin fresh.",
+                "Autonomy stopped. Learning state cleared; the next start will begin fresh.",
                 stop_daemon(reset_state=True)
             )
             st.rerun()
-        if top_actions[2].button("Send a T-800", width="stretch"):
+        if top_actions[2].button("Run One Cycle", width="stretch"):
             set_action_result(
                 "One-cycle run finished.",
                 run_single_cycle(allow_submit=allow_submit, history=int(history), min_local_delta=float(delta)),
             )
             st.rerun()
-        if top_actions[3].button("Log Out of Judgment Day", width="stretch"):
-            set_action_result("AI system shut down and control console locked.", shutdown_and_logout())
+        if top_actions[3].button("Sign Out And Stop", width="stretch"):
+            set_action_result("System stopped and control console locked.", shutdown_and_logout())
             st.rerun()
 
         lower_actions = st.columns(3)
-        if lower_actions[0].button("Scan the Battlefield", width="stretch"):
+        if lower_actions[0].button("Sync Kaggle State", width="stretch"):
             persist_runtime_preferences(
                 allow_submit=bool(allow_submit),
                 history=int(history),
@@ -1401,10 +1408,10 @@ def render_dashboard() -> None:
             )
             set_action_result("State sync finished.", sync_state(history=int(history)))
             st.rerun()
-        if lower_actions[1].button("Cyberdyne Diagnostics", width="stretch"):
+        if lower_actions[1].button("Run Healthcheck", width="stretch"):
             set_action_result("Healthcheck finished.", healthcheck())
             st.rerun()
-        if lower_actions[2].button("Reboot the Time Core", width="stretch"):
+        if lower_actions[2].button("Restart Daemon", width="stretch"):
             save_operator_note(operator_note())
             set_action_result(
                 "Daemon restart requested.",
@@ -1426,17 +1433,17 @@ def render_dashboard() -> None:
             placeholder="Keep seed-preserving swaps near the strongest accepted pack, avoid repeating the last failed family, and only care about large public jumps.",
         )
         note_buttons = st.columns(3)
-        if note_buttons[0].button("Rewrite the Future", width="stretch"):
+        if note_buttons[0].button("Save Operator Note", width="stretch"):
             save_operator_note(note_value)
             st.success("Operator note saved.")
-        if note_buttons[1].button("Erase the Timeline", width="stretch"):
+        if note_buttons[1].button("Clear Operator Note", width="stretch"):
             save_operator_note("")
             st.success("Operator note cleared.")
-        if note_buttons[2].button("Arm Judgment Day", width="stretch"):
+        if note_buttons[2].button("Apply Operator Note", width="stretch"):
             save_operator_note(note_value)
-            st.success("Operator note armed for future cycles.")
+            st.success("Operator note saved for future cycles.")
 
-        st.subheader("Kaggle Intel Intake")
+        st.subheader("Kaggle Source Intake")
         kaggle_seed_text = st.text_area(
             "Paste Kaggle URLs or CLI lines",
             value=st.session_state.get("kaggle_intake_text", ""),
@@ -1445,11 +1452,11 @@ def render_dashboard() -> None:
             key="kaggle_intake_text",
         )
         intake_buttons = st.columns(2)
-        if intake_buttons[0].button("Harvest Future Files", width="stretch"):
+        if intake_buttons[0].button("Import Kaggle Sources", width="stretch"):
             set_action_result("Kaggle source fetch finished.", fetch_kaggle_targets(kaggle_seed_text))
             st.cache_data.clear()
             st.rerun()
-        if intake_buttons[1].button("Review Time Displacement", width="stretch"):
+        if intake_buttons[1].button("Show Import Location", width="stretch"):
             st.info("Imported sources appear below and in the NeuroGolf scratch gui_imports folder.")
 
         if imported_sources:
@@ -1580,10 +1587,10 @@ def render_dashboard() -> None:
                 },
             }
             st.rerun()
-        if profile_buttons[2].button("Install Neural Chip", width="stretch"):
+        if profile_buttons[2].button("Save Profile", width="stretch"):
             update_env_settings(env_updates_for_profile(profile_key))
             st.success("Profile written to .env.")
-        if profile_buttons[3].button("Judgment Day Upgrade", width="stretch"):
+        if profile_buttons[3].button("Apply Profile And Restart", width="stretch"):
             control_settings = current_control_settings()
             update_env_settings(env_updates_for_profile(profile_key))
             persist_runtime_preferences(
@@ -1630,7 +1637,7 @@ def render_dashboard() -> None:
                 )
 
         manual_buttons = st.columns(2)
-        if manual_buttons[0].button("Override the Neural Net", width="stretch"):
+        if manual_buttons[0].button("Save Manual Role Overrides", width="stretch"):
             updates = {}
             for role in ROLE_LABELS:
                 updates[ROLE_ENV_KEYS[role]] = st.session_state.get(role_widget_key(role), "")
@@ -1642,7 +1649,7 @@ def render_dashboard() -> None:
             st.rerun()
 
     with tab_neurogolf:
-        st.markdown('<div class="panel"><h4>Battlefield Telemetry</h4><div class="panel-copy">Competition state, leaderboard standing, recent submissions, and output manifests.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Competition Telemetry</h4><div class="panel-copy">Competition state, leaderboard standing, recent submissions, and output manifests.</div></div>', unsafe_allow_html=True)
 
         # Metric V3 Rules Alert Banner
         metric_v3 = state.get("metric_v3_rules", {})
@@ -1650,7 +1657,7 @@ def render_dashboard() -> None:
             st.markdown(
                 f"""
                 <div class="alert-banner">
-                    <div class="alert-title">⚠️ April 28, 2026 Metric Update (V3) — ACTIVE</div>
+                    <div class="alert-title">April 28, 2026 Metric Update (V3) - ACTIVE</div>
                     <div class="alert-text">
                         <strong>Dynamic shapes now yield ZERO points.</strong> All networks must have statically-defined shapes.
                         <strong>Constant values now correctly count</strong> toward parameter contributions.
@@ -1693,7 +1700,7 @@ def render_dashboard() -> None:
         st.dataframe(state.get("recent_output_manifests", []), width="stretch", hide_index=True)
 
     with tab_reports:
-        st.markdown('<div class="panel"><h4>Hunter-Killer Reports</h4><div class="panel-copy">Recent autonomy cycles, submit decisions, and the live daemon trace.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Cycle Reports</h4><div class="panel-copy">Recent autonomy cycles, submit decisions, and the live daemon trace.</div></div>', unsafe_allow_html=True)
         report_rows = [
             {
                 "path": item.get("_path"),
@@ -1720,29 +1727,29 @@ def render_dashboard() -> None:
             else:
                 st.info("No cycle reports found yet.")
         with log_col:
-            st.subheader("Latest Signal Feed")
+            st.subheader("Latest Daemon Log")
             st.code(tail_log(140) or "No daemon log yet.", language="text")
 
     with tab_arc:
         render_arc_visualizer()
 
     with tab_chat:
-        st.markdown('<div class="panel"><h4>Direct Line To Skynet</h4><div class="panel-copy">Use the Fast Operator Link for quick answers, or switch to the Orchestrator when you want deeper strategy synthesis grounded in live system state.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><h4>Operator Console</h4><div class="panel-copy">Use the Fast Operator for quick answers, or switch to the Orchestrator when you want deeper strategy synthesis grounded in live system state.</div></div>', unsafe_allow_html=True)
         ensure_chat_state()
         chat_context = build_orchestrator_chat_context(state, status, reports, imported_sources, current_role_map())
         chat_target = st.radio(
             "Chat target",
             options=["operator_fast", "orchestrator"],
-            format_func=lambda value: "Fast Operator Link" if value == "operator_fast" else "Orchestrator",
+            format_func=lambda value: "Fast Operator" if value == "operator_fast" else "Orchestrator",
             horizontal=True,
         )
 
         chat_actions = st.columns(2)
-        if chat_actions[0].button("Purge Chat Memory", width="stretch"):
+        if chat_actions[0].button("Clear Chat", width="stretch"):
             st.session_state.pop("orchestrator_chat_messages", None)
             ensure_chat_state()
             st.rerun()
-        if chat_actions[1].button("Inject Live State", width="stretch"):
+        if chat_actions[1].button("Show Context Note", width="stretch"):
             st.info("The orchestrator already receives live state, imported Kaggle sources, operator note, and recent experiment telemetry on every message.")
 
         for message in st.session_state["orchestrator_chat_messages"]:

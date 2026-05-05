@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -14,6 +15,8 @@ from pathlib import Path
 import zipfile
 
 from core.config import (
+    MODEL_OPTIONS,
+    MODEL_REGISTRY,
     NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT,
     NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS,
     NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD,
@@ -547,20 +550,54 @@ def _branch_block_count(summary: dict, key: tuple[str, str, str]) -> int:
     return 0
 
 
+def _branch_repeat_count(summary: dict, key: tuple[str, str, str]) -> int:
+    learning = summary.get("autonomy_learning", {}) if isinstance(summary.get("autonomy_learning"), dict) else {}
+    branch_counts = learning.get("branch_counts", {})
+    if not isinstance(branch_counts, dict):
+        return 0
+    try:
+        return int(branch_counts.get(_key_text(key), 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _branch_recent_streak_count(summary: dict, key: tuple[str, str, str]) -> int:
+    learning = summary.get("autonomy_learning", {}) if isinstance(summary.get("autonomy_learning"), dict) else {}
+    streak = learning.get("recent_streak", {})
+    if not isinstance(streak, dict):
+        return 0
+    if str(streak.get("key", "")) != _key_text(key):
+        return 0
+    try:
+        return int(streak.get("count", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _should_avoid_branch(summary: dict, key: tuple[str, str, str], recent_keys: set[tuple[str, str, str]] | None = None) -> bool:
+    if _branch_block_count(summary, key) >= 2:
+        return True
+    if _branch_recent_streak_count(summary, key) >= 2:
+        return True
+    if recent_keys is not None and key in recent_keys:
+        return True
+    return _branch_repeat_count(summary, key) >= 4
+
+
 def _choose_fresh_fallback_plan(summary: dict, reports: list[dict], tried_keys: set[tuple[str, str, str]]) -> dict | None:
     recent_keys = _recent_experiment_keys(reports)
     candidates = [dict(candidate) for candidate in _fallback_experiments(summary)]
 
     for candidate in candidates:
         key = _experiment_key(candidate)
-        if key in tried_keys or key in recent_keys or _branch_block_count(summary, key) >= 2:
+        if key in tried_keys or _should_avoid_branch(summary, key, recent_keys):
             continue
         candidate["rationale"] = "Selected by deterministic learning guard: fresh branch after recent failures."
         return candidate
 
     for candidate in candidates:
         key = _experiment_key(candidate)
-        if key in tried_keys or _branch_block_count(summary, key) >= 3:
+        if key in tried_keys or _branch_block_count(summary, key) >= 3 or _branch_repeat_count(summary, key) >= 4:
             continue
         candidate["rationale"] = "Selected by deterministic learning guard: least-repeated fallback branch."
         return candidate
@@ -658,17 +695,51 @@ def _fallback_experiments(summary: dict) -> list[dict]:
 
 
 def _run_external_build(command: list[str], *, label: str, target: str, variant: str) -> None:
+    process: subprocess.Popen[str] | None = None
     try:
-        subprocess.run(
+        process = subprocess.Popen(
             command,
             cwd=NEUROGOLF_PROJECT_ROOT,
-            check=True,
-            timeout=NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
+        stdout, stderr = process.communicate(timeout=NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS)
+        if process.returncode:
+            raise subprocess.CalledProcessError(process.returncode, command, output=stdout, stderr=stderr)
     except subprocess.TimeoutExpired as exc:
         timeout_seconds = int(NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS)
+        if process is not None and process.poll() is None:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+            else:
+                process.kill()
+            try:
+                process.communicate(timeout=15)
+            except Exception:
+                pass
         message = f"{label} timed out after {timeout_seconds} seconds"
         _daemon_log(f"build:timeout target={target} variant={variant} timeout={timeout_seconds}")
+        _write_status(
+            "error",
+            message,
+            progress=1.0,
+            extra={"target": target, "variant": variant, "build_strategy": label},
+        )
+        raise RuntimeError(message) from exc
+    except subprocess.CalledProcessError as exc:
+        stderr = str(exc.stderr or "").strip()
+        stdout = str(exc.output or "").strip()
+        detail = stderr or stdout or f"exit status {exc.returncode}"
+        message = f"{label} failed: {detail[:400]}"
+        _daemon_log(f"build:failed target={target} variant={variant} returncode={exc.returncode} detail={detail[:400]}")
         _write_status(
             "error",
             message,
@@ -935,11 +1006,11 @@ def _normalize_plan(plan: dict, reports: list[dict], summary: dict) -> dict:
         plan["should_submit"] = False
         plan["rationale"] = str(plan.get("rationale", "")).strip() + " | validation-first: imported seed staged for inspection"
         key = _experiment_key({"action": action, "seed_label": seed, "variant_hint": ""})
-        if key not in recent_keys:
+        if not _should_avoid_branch(summary, key, recent_keys):
             return plan
         for candidate in _fallback_experiments(summary):
             candidate_key = _experiment_key(candidate)
-            if candidate_key not in recent_keys and _branch_block_count(summary, candidate_key) < 2:
+            if not _should_avoid_branch(summary, candidate_key, recent_keys):
                 candidate = dict(candidate)
                 candidate["rationale"] = str(plan.get("rationale", "")).strip() + " | switched to a fresh experiment branch"
                 return candidate
@@ -959,11 +1030,11 @@ def _normalize_plan(plan: dict, reports: list[dict], summary: dict) -> dict:
         plan["should_submit"] = False
         plan["rationale"] = str(plan.get("rationale", "")).strip() + " | validation-first: cached candidate staged for inspection"
         key = _experiment_key({"action": action, "target": target, "variant_hint": str(plan.get("variant_hint", "")).strip()})
-        if key not in recent_keys:
+        if not _should_avoid_branch(summary, key, recent_keys):
             return plan
         for candidate in _fallback_experiments(summary):
             candidate_key = _experiment_key(candidate)
-            if candidate_key not in recent_keys and _branch_block_count(summary, candidate_key) < 2:
+            if not _should_avoid_branch(summary, candidate_key, recent_keys):
                 candidate = dict(candidate)
                 candidate["rationale"] = str(plan.get("rationale", "")).strip() + " | switched to a fresh experiment branch"
                 return candidate
@@ -973,12 +1044,13 @@ def _normalize_plan(plan: dict, reports: list[dict], summary: dict) -> dict:
         mode = _normalize_blend_variant(plan.get("mode", "strict_known"))
         plan["mode"] = mode
         plan["variant_hint"] = mode
-        if _experiment_key(plan) not in recent_keys:
+        key = _experiment_key(plan)
+        if not _should_avoid_branch(summary, key, recent_keys):
             plan["seed_label"] = ""
             return plan
         for candidate_mode in ("strict_known", "skip_known_dynamic_sanitized", "skip_known_dynamic"):
             candidate_key = _experiment_key({"action": action, "mode": candidate_mode})
-            if candidate_key not in recent_keys and _branch_block_count(summary, candidate_key) < 2:
+            if not _should_avoid_branch(summary, candidate_key, recent_keys):
                 plan = dict(plan)
                 plan["mode"] = candidate_mode
                 plan["variant_hint"] = candidate_mode
@@ -998,11 +1070,12 @@ def _normalize_plan(plan: dict, reports: list[dict], summary: dict) -> dict:
         plan["variant_hint"] = "processable_best"
         plan["rationale"] = str(plan.get("rationale", "")).strip() + " | switched to the strongest currently buildable seed"
         return plan
-    if _experiment_key(plan) not in recent_keys:
+    key = _experiment_key(plan)
+    if not _should_avoid_branch(summary, key, recent_keys):
         return plan
     for candidate in _fallback_experiments(summary):
         candidate_key = _experiment_key(candidate)
-        if candidate_key not in recent_keys and _branch_block_count(summary, candidate_key) < 2:
+        if not _should_avoid_branch(summary, candidate_key, recent_keys):
             candidate = dict(candidate)
             candidate["rationale"] = str(plan.get("rationale", "")).strip() + " | switched to a fresh experiment branch"
             return candidate
@@ -1878,7 +1951,16 @@ def run_cycle(args: argparse.Namespace) -> dict:
             plan = alternate
 
         if final_attempt is None:
-            report["submit_result"] = {"submitted": False, "reason": "no viable experiment branch"}
+            if attempts:
+                last_attempt = attempts[-1]
+                report["plan"] = last_attempt.get("plan", report.get("plan"))
+                report["attempts"] = attempts
+                report["submit_result"] = last_attempt.get(
+                    "submit_result",
+                    {"submitted": False, "reason": "no viable experiment branch"},
+                )
+            else:
+                report["submit_result"] = {"submitted": False, "reason": "no viable experiment branch"}
         else:
             report["plan"] = final_attempt["plan"]
             report["build_manifest"] = final_attempt["build_manifest"]
