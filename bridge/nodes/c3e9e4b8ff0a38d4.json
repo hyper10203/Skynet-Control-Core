@@ -13,7 +13,7 @@
     "status": "running",
     "status_updated_at": "2026-05-06T12:21:20Z",
     "status_stale": false,
-    "status_age_seconds": 23.042514
+    "status_age_seconds": 42.293376
   },
   "phase": "reasoning",
   "message": "Querying reasoning_secondary: gemma3:12b",
@@ -23501,7 +23501,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_121902.json"
   },
-  "last_seen_at": "2026-05-06T12:21:43Z",
+  "last_seen_at": "2026-05-06T12:22:02Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
