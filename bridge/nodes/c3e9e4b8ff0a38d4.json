@@ -11,13 +11,13 @@
     "cpu_percent": 0.0,
     "memory_mb": 10.4,
     "status": "running",
-    "status_updated_at": "2026-05-06T08:08:10Z",
+    "status_updated_at": "2026-05-06T08:19:43Z",
     "status_stale": false,
-    "status_age_seconds": 682.341276
+    "status_age_seconds": 8.193285
   },
   "phase": "building",
-  "message": "Building splice from latest_artem_part2 (safe splice)",
-  "progress": 0.8,
+  "message": "Finished splice from latest_artem_part2 (safe splice)",
+  "progress": 0.88,
   "best_completed_public_score": null,
   "latest_completed_public_score": null,
   "pending_submission_count": 0,
@@ -5641,7 +5641,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_080611.json"
   },
-  "last_seen_at": "2026-05-06T08:19:32Z",
+  "last_seen_at": "2026-05-06T08:19:51Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
