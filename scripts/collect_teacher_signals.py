@@ -77,14 +77,24 @@ def _extract_json(text: str) -> dict[str, Any]:
         pass
     match = re.search(r"\{.*\}", text, flags=re.DOTALL)
     if not match:
-        return {}
+        return _extract_markdown_sections(text)
     try:
         value = json.loads(match.group(0))
         return value if isinstance(value, dict) else {}
     except json.JSONDecodeError:
         pass
     markdown = _extract_markdown_sections(text)
-    return markdown
+    if markdown:
+        return markdown
+    partial: dict[str, Any] = {}
+    for key in ("rule_summary", "graph_hint", "cost_notes", "risk_notes"):
+        match = re.search(rf'"{key}"\s*:\s*"(?P<value>(?:\\.|[^"\\])*)"', text, flags=re.DOTALL)
+        if match:
+            partial[key] = bytes(match.group("value"), "utf-8").decode("unicode_escape").strip()
+    ops_match = re.search(r'"candidate_ops"\s*:\s*\[(?P<value>.*?)\]', text, flags=re.DOTALL)
+    if ops_match:
+        partial["candidate_ops"] = re.findall(r'"((?:\\.|[^"\\])*)"', ops_match.group("value"))
+    return partial
 
 
 def _extract_markdown_sections(text: str) -> dict[str, Any]:
@@ -97,20 +107,48 @@ def _extract_markdown_sections(text: str) -> dict[str, Any]:
     }
     result: dict[str, Any] = {}
     normalized = text.replace("\r\n", "\n")
-    for key, names in labels.items():
-        for name in names:
-            pattern = re.compile(
-                rf"(?:\*\*)?{re.escape(name)}\s*:?(?:\*\*)?\s*:?\s*(.*?)(?=\n\s*(?:\*\*)?(?:rule summary|rule|graph hint|graph template|candidate ops|ops|cost notes|cost|risk notes|risks)\s*:?(?:\*\*)?\s*:|\Z)",
-                flags=re.IGNORECASE | re.DOTALL,
-            )
-            found = pattern.search(normalized)
-            if found:
-                value = found.group(1).strip(" \n`*-")
-                if key == "candidate_ops":
-                    result[key] = re.findall(r"[A-Za-z][A-Za-z0-9_]*", value)
-                else:
-                    result[key] = value
-                break
+    reverse = {
+        alias: key
+        for key, names in labels.items()
+        for alias in names
+    }
+    current_key: str | None = None
+    buffer: list[str] = []
+
+    def flush() -> None:
+        nonlocal buffer, current_key
+        if not current_key:
+            buffer = []
+            return
+        value = "\n".join(buffer).strip()
+        value = re.sub(r"^```[A-Za-z0-9_-]*\n?", "", value)
+        value = re.sub(r"\n?```$", "", value)
+        value = value.strip(" \n`*-")
+        if value:
+            if current_key == "candidate_ops":
+                result[current_key] = re.findall(r"[A-Za-z][A-Za-z0-9_]*", value)
+            else:
+                result[current_key] = value
+        buffer = []
+
+    header_names = "|".join(re.escape(alias) for alias in reverse)
+    header_pattern = re.compile(
+        rf"^\s*(?:[#>*-]+\s*)?(?P<label>{header_names})\s*:?\s*(?P<rest>.*)$",
+        flags=re.IGNORECASE,
+    )
+
+    for line in normalized.splitlines():
+        found = header_pattern.match(line.strip())
+        if found:
+            flush()
+            current_key = reverse[found.group("label").strip().lower()]
+            rest = found.group("rest").strip()
+            buffer = [rest] if rest else []
+            continue
+        if current_key:
+            buffer.append(line)
+
+    flush()
     return result
 
 

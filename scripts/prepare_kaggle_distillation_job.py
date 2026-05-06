@@ -17,10 +17,10 @@ from core.config import PROJECT_ROOT
 TRAIN_SCRIPT = r'''
 from __future__ import annotations
 
-import json
-import os
 import base64
 import inspect
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -32,12 +32,20 @@ os.environ["TRANSFORMERS_NO_TF"] = "1"
 DATASET_NAME = "teacher_prompts.jsonl"
 EMBEDDED_DATASET_B64 = "__DATASET_B64__"
 OUT_DIR = Path("/kaggle/working/student_lora")
-MODEL_NAME = os.environ.get("STUDENT_BASE_MODEL", "Qwen/Qwen2.5-Coder-1.5B-Instruct")
-MAX_SEQ_LENGTH = 2048
+MODEL_NAME = __MODEL_NAME__
+MAX_SEQ_LENGTH = __MAX_SEQ_LENGTH__
+LORA_R = __LORA_R__
+GRAD_ACCUM = __GRAD_ACCUM__
+NUM_EPOCHS = __NUM_EPOCHS__
+LEARNING_RATE = __LEARNING_RATE__
+LOAD_IN_4BIT = __LOAD_IN_4BIT__
 
 
 def ensure_packages():
-    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchvision", "torchaudio"], check=False)
+    subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "-y", "-q", "torchvision", "torchaudio"],
+        check=False,
+    )
     packages = [
         "torch==2.6.0",
         "transformers==4.51.3",
@@ -45,6 +53,7 @@ def ensure_packages():
         "peft",
         "trl==0.15.2",
         "accelerate",
+        "bitsandbytes",
     ]
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *packages])
 
@@ -73,14 +82,26 @@ def main():
     import torch
     from datasets import load_dataset
     from peft import LoraConfig
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+        TrainingArguments,
+    )
     from trl import SFTTrainer
     try:
         from trl import SFTConfig
     except ImportError:
         SFTConfig = None
 
-    print({"cuda": torch.cuda.is_available(), "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu"})
+    print(
+        {
+            "cuda": torch.cuda.is_available(),
+            "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+            "model": MODEL_NAME,
+            "load_in_4bit": LOAD_IN_4BIT,
+        }
+    )
     dataset_path = find_dataset()
     print({"dataset": str(dataset_path)})
 
@@ -90,35 +111,77 @@ def main():
     if not tokenizer.model_max_length or tokenizer.model_max_length > MAX_SEQ_LENGTH:
         tokenizer.model_max_length = MAX_SEQ_LENGTH
 
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        trust_remote_code=True,
-        torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto",
-    )
+    model_kwargs = {
+        "trust_remote_code": True,
+        "device_map": "auto",
+        "low_cpu_mem_usage": True,
+    }
+    if LOAD_IN_4BIT:
+        model_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+    else:
+        model_kwargs["torch_dtype"] = torch.float16 if torch.cuda.is_available() else torch.float32
+
+    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, **model_kwargs)
+    model.config.use_cache = False
+    if hasattr(model, "gradient_checkpointing_enable"):
+        model.gradient_checkpointing_enable()
+
     dataset = load_dataset("json", data_files=str(dataset_path), split="train")
 
+    def truncate_for_sft(text: str) -> str:
+        truncate_budget = max(32, MAX_SEQ_LENGTH - 64)
+        tokenized = tokenizer(
+            text,
+            truncation=True,
+            max_length=truncate_budget,
+            add_special_tokens=False,
+        )
+        input_ids = tokenized.get("input_ids", [])
+        if not input_ids:
+            return text
+        return tokenizer.decode(input_ids, skip_special_tokens=False)
+
     def formatting_func(example):
-        return tokenizer.apply_chat_template(example["messages"], tokenize=False, add_generation_prompt=False)
+        text = tokenizer.apply_chat_template(
+            example["messages"],
+            tokenize=False,
+            add_generation_prompt=False,
+        )
+        return truncate_for_sft(text)
 
     peft_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
+        r=LORA_R,
+        lora_alpha=LORA_R * 2,
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
     )
     training_kwargs = {
         "output_dir": str(OUT_DIR),
         "per_device_train_batch_size": 1,
-        "gradient_accumulation_steps": 8,
-        "num_train_epochs": 1,
-        "learning_rate": 2e-4,
+        "gradient_accumulation_steps": GRAD_ACCUM,
+        "num_train_epochs": NUM_EPOCHS,
+        "learning_rate": LEARNING_RATE,
         "logging_steps": 5,
-        "save_steps": 50,
+        "save_steps": 25,
         "save_total_limit": 2,
+        "gradient_checkpointing": True,
         "fp16": torch.cuda.is_available(),
+        "optim": "paged_adamw_8bit" if LOAD_IN_4BIT else "adamw_torch",
         "report_to": [],
     }
     sft_config_params = inspect.signature(SFTConfig.__init__).parameters if SFTConfig is not None else {}
@@ -145,14 +208,25 @@ def main():
     if "max_seq_length" in trainer_params:
         trainer_kwargs["max_seq_length"] = MAX_SEQ_LENGTH
     trainer = SFTTrainer(**trainer_kwargs)
-    trainer.train()
+    train_result = trainer.train()
     trainer.save_model(str(OUT_DIR))
     shutil.make_archive("/kaggle/working/student_lora", "zip", OUT_DIR)
-    Path("/kaggle/working/distillation_result.json").write_text(json.dumps({
-        "base_model": MODEL_NAME,
-        "records": len(dataset),
-        "artifact": "/kaggle/working/student_lora.zip",
-    }, indent=2))
+    Path("/kaggle/working/distillation_result.json").write_text(
+        json.dumps(
+            {
+                "base_model": MODEL_NAME,
+                "records": len(dataset),
+                "artifact": "/kaggle/working/student_lora.zip",
+                "load_in_4bit": LOAD_IN_4BIT,
+                "max_seq_length": MAX_SEQ_LENGTH,
+                "lora_r": LORA_R,
+                "epochs": NUM_EPOCHS,
+                "gradient_accumulation_steps": GRAD_ACCUM,
+                "train_metrics": train_result.metrics,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
@@ -162,11 +236,43 @@ if __name__ == "__main__":
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Prepare a Kaggle GPU kernel for student LoRA training.")
-    parser.add_argument("--dataset", type=Path, default=PROJECT_ROOT / "outputs" / "distillation" / "teacher_prompts.jsonl")
-    parser.add_argument("--out-dir", type=Path, default=PROJECT_ROOT / "kaggle" / "axiomgraph-distill-student")
-    parser.add_argument("--id", default="subhampaulchoudhury/axiomgraph-neurogolf-student-distillation")
-    parser.add_argument("--title", default="AxiomGraph NeuroGolf Student Distillation")
-    parser.add_argument("--dataset-source", default="subhampaulchoudhury/axiomgraph-neurogolf-distillation-data")
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        default=PROJECT_ROOT / "outputs" / "distillation" / "teacher_prompts.jsonl",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=PROJECT_ROOT / "kaggle" / "axiomgraph-distill-student",
+    )
+    parser.add_argument(
+        "--id",
+        default="subhampaulchoudhury/axiomgraph-neurogolf-student-distillation-v13",
+    )
+    parser.add_argument(
+        "--title",
+        default="AxiomGraph NeuroGolf Student Distillation v13",
+    )
+    parser.add_argument(
+        "--dataset-source",
+        default="subhampaulchoudhury/axiomgraph-neurogolf-distillation-data",
+    )
+    parser.add_argument(
+        "--model",
+        default="Qwen/Qwen2.5-Coder-7B-Instruct",
+        help="Base Hugging Face model for the Kaggle student run.",
+    )
+    parser.add_argument("--max-seq-length", type=int, default=2048)
+    parser.add_argument("--epochs", type=float, default=2.0)
+    parser.add_argument("--lr", type=float, default=1.5e-4)
+    parser.add_argument("--lora-r", type=int, default=16)
+    parser.add_argument("--grad-accum", type=int, default=4)
+    parser.add_argument(
+        "--full-precision",
+        action="store_true",
+        help="Disable the 4-bit QLoRA path and load the model in regular precision.",
+    )
     parser.add_argument("--embed-dataset", action="store_true")
     return parser
 
@@ -177,12 +283,30 @@ def main() -> int:
         raise SystemExit(f"Dataset not found: {args.dataset}")
     args.out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(args.dataset, args.out_dir / "teacher_prompts.jsonl")
+
+    script_text = TRAIN_SCRIPT
+    replacements = {
+        "__MODEL_NAME__": json.dumps(str(args.model)),
+        "__MAX_SEQ_LENGTH__": str(int(args.max_seq_length)),
+        "__LORA_R__": str(int(args.lora_r)),
+        "__GRAD_ACCUM__": str(int(args.grad_accum)),
+        "__NUM_EPOCHS__": repr(float(args.epochs)),
+        "__LEARNING_RATE__": repr(float(args.lr)),
+        "__LOAD_IN_4BIT__": "False" if args.full_precision else "True",
+    }
+    for key, value in replacements.items():
+        script_text = script_text.replace(key, value)
+
     if args.embed_dataset:
         dataset_b64 = base64.b64encode(args.dataset.read_bytes()).decode("ascii")
-        script_text = TRAIN_SCRIPT.replace("__DATASET_B64__", dataset_b64)
+        script_text = script_text.replace("__DATASET_B64__", dataset_b64)
     else:
-        script_text = TRAIN_SCRIPT
-    (args.out_dir / "kaggle_distill_train.py").write_text(script_text.strip() + "\n", encoding="utf-8")
+        script_text = script_text.replace("__DATASET_B64__", "")
+
+    (args.out_dir / "kaggle_distill_train.py").write_text(
+        script_text.strip() + "\n",
+        encoding="utf-8",
+    )
     metadata = {
         "id": args.id,
         "title": args.title,
@@ -196,8 +320,25 @@ def main() -> int:
         "competition_sources": [],
         "kernel_sources": [],
     }
-    (args.out_dir / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    print(json.dumps({"kernel_dir": str(args.out_dir), "metadata": str(args.out_dir / "kernel-metadata.json")}, indent=2))
+    (args.out_dir / "kernel-metadata.json").write_text(
+        json.dumps(metadata, indent=2),
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "kernel_dir": str(args.out_dir),
+                "metadata": str(args.out_dir / "kernel-metadata.json"),
+                "model": args.model,
+                "load_in_4bit": not args.full_precision,
+                "max_seq_length": int(args.max_seq_length),
+                "lora_r": int(args.lora_r),
+                "epochs": float(args.epochs),
+                "grad_accum": int(args.grad_accum),
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

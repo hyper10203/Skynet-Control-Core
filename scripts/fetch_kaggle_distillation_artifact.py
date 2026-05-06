@@ -15,7 +15,7 @@ from core.config import PROJECT_ROOT
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Download Kaggle distillation kernel outputs.")
-    parser.add_argument("--kernel", default="subhampaulchoudhury/axiomgraph-neurogolf-student-distillation-v10")
+    parser.add_argument("--kernel", default="subhampaulchoudhury/axiomgraph-neurogolf-student-distillation-v13")
     parser.add_argument("--out", type=Path, default=PROJECT_ROOT / "outputs" / "distillation" / "kaggle_artifacts")
     return parser
 

@@ -1,9 +1,9 @@
 param(
     [switch]$AllowSubmit,
     [int]$History = 10,
-    [double]$MinLocalDelta = 40.0,
-    [int]$SleepSeconds = 1800,
-    [int]$MaxPendingSubmissions = 1
+    [double]$MinLocalDelta = 0.0,
+    [int]$SleepSeconds = 60,
+    [int]$MaxPendingSubmissions = 2
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path

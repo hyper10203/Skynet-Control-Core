@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
+import streamlit.components.v1 as components
 from matplotlib.colors import ListedColormap
 
 from core.arc_loader import load_tasks
@@ -59,6 +60,7 @@ from core.runtime_control import (
 
 APP_NAME = "AxiomGraph Operations Core"
 APP_SHORT_NAME = "AxiomGraph"
+WEBSITE_BASE_URL = "http://127.0.0.1:4173"
 
 st.set_page_config(page_title=APP_NAME, page_icon="A", layout="wide")
 
@@ -184,6 +186,33 @@ h1, h2, h3, .stTabs [data-baseweb="tab"] {
     background: linear-gradient(135deg, rgba(32, 190, 255, 0.15), rgba(32, 190, 255, 0.08));
     border-color: rgba(32, 190, 255, 0.4);
     color: var(--cyan);
+}
+
+.hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 0.9rem;
+}
+
+.hero-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.42rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: rgba(17, 24, 39, 0.82);
+    color: #d8f7ff !important;
+    text-decoration: none !important;
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+}
+
+.hero-link:hover {
+    border-color: var(--aqua);
+    box-shadow: 0 0 14px rgba(127, 255, 238, 0.18);
+    transform: translateY(-1px);
 }
 
 .asset-rail {
@@ -689,7 +718,7 @@ def seed_control_editor(env_settings: dict[str, str]) -> None:
     defaults = {
         "allow_submit": str(env_settings.get("NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT", "1")).strip().lower() not in {"0", "false", "no"},
         "history": int(env_settings.get("NEUROGOLF_AUTONOMY_MAX_HISTORY", "10")),
-        "min_local_delta": float(env_settings.get("NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD", "40")),
+        "min_local_delta": float(env_settings.get("NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD", "0")),
         "sleep_seconds": int(env_settings.get("NEUROGOLF_AUTONOMY_LOOP_SECONDS", "1800")),
         "max_pending_submissions": int(env_settings.get("NEUROGOLF_AUTONOMY_MAX_PENDING_SUBMISSIONS", "1")),
     }
@@ -697,13 +726,17 @@ def seed_control_editor(env_settings: dict[str, str]) -> None:
         key = control_widget_key(name)
         if key not in st.session_state:
             st.session_state[key] = value
+    migration_key = "submission_policy_any_gain_v1"
+    if migration_key not in st.session_state:
+        st.session_state[control_widget_key("min_local_delta")] = defaults["min_local_delta"]
+        st.session_state[migration_key] = True
 
 
 def current_control_settings() -> dict[str, int | float | bool]:
     return {
         "allow_submit": bool(st.session_state.get(control_widget_key("allow_submit"), True)),
         "history": int(st.session_state.get(control_widget_key("history"), 10)),
-        "min_local_delta": float(st.session_state.get(control_widget_key("min_local_delta"), 40.0)),
+        "min_local_delta": float(st.session_state.get(control_widget_key("min_local_delta"), 0.0)),
         "sleep_seconds": int(st.session_state.get(control_widget_key("sleep_seconds"), 1800)),
         "max_pending_submissions": int(st.session_state.get(control_widget_key("max_pending_submissions"), 1)),
     }
@@ -1077,7 +1110,8 @@ def render_dashboard() -> None:
     
     latest_completed = current_completed_submission(submissions)
     latest_submission = submissions[0] if submissions else {}
-    campaign = state.get("campaign_progress", {}) if isinstance(state.get("campaign_progress"), dict) else {}
+    submission_policy = state.get("submission_policy", state.get("campaign_progress", {}))
+    submission_policy = submission_policy if isinstance(submission_policy, dict) else {}
     progress = clamp_progress(status.get("progress", 0.0))
     scores = completed_scores(submissions)
     latest_report = reports[0] if reports else {}
@@ -1124,8 +1158,13 @@ def render_dashboard() -> None:
                 <div class="badge-chip">Rank: {fmt_value(rank_info.get("rank"), digits=0)}</div>
                 <div class="badge-chip">Latest: {fmt_value(latest_completed.get("public_score"))}</div>
                 <div class="badge-chip">Best: {fmt_value(state.get("best_completed_public_score"))}</div>
+                <div class="badge-chip">Policy: submit any +{fmt_value(submission_policy.get("minimum_public_gain_to_submit"), digits=2, fallback="1.00")} gain</div>
                 <div class="badge-chip badge-phase">{status.get("phase", "idle")}</div>
-                <!-- No target - all valid V3 submissions allowed immediately -->
+              </div>
+              <div class="hero-links">
+                <a class="hero-link" href="{WEBSITE_BASE_URL}/index.html" target="_blank">Landing Site</a>
+                <a class="hero-link" href="{WEBSITE_BASE_URL}/auth.html" target="_blank">Secure Entry</a>
+                <a class="hero-link" href="{WEBSITE_BASE_URL}/app.html" target="_blank">Web Command Deck</a>
               </div>
             </div>
             <div class="asset-rail">
@@ -1195,8 +1234,8 @@ def render_dashboard() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_overview, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
-        ["Overview", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
+    tab_overview, tab_portal, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
+        ["Overview", "Portal", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
     )
 
     with tab_overview:
@@ -1210,7 +1249,7 @@ def render_dashboard() -> None:
                     "rank": rank_info,
                     "latest_submission": latest_submission,
                     "latest_completed": latest_completed,
-                    "campaign_progress": campaign,
+                    "submission_policy": submission_policy,
                 }
             )
         with right_col:
@@ -1221,6 +1260,10 @@ def render_dashboard() -> None:
             st.markdown(f"**Latest plan target:** `{latest_plan.get('target') or latest_plan.get('seed_label', 'n/a')}`")
             st.markdown(f"**Latest plan variant:** `{latest_plan.get('variant_hint') or latest_plan.get('mode', 'n/a')}`")
             st.markdown(f"**Latest submit decision:** `{latest_submit.get('reason', 'n/a')}`")
+            if submission_policy:
+                st.markdown(
+                    f"**Submission policy:** submit any valid pack that clears the best known public score by `+{fmt_value(submission_policy.get('minimum_public_gain_to_submit'), digits=2, fallback='1.00')}`."
+                )
             if daemon.get("status_stale"):
                 st.warning(f"Daemon status looks stale: last update was about {fmt_value(daemon.get('status_age_seconds'))} seconds ago.")
             st.subheader("Daemon Log")
@@ -1240,7 +1283,11 @@ def render_dashboard() -> None:
 
             st.metric("Imported Sources", len(imported_sources))
 
-            # Target Score metric removed - targets disabled, all valid submissions allowed
+            st.metric(
+                "Next Submit Trigger",
+                fmt_value(submission_policy.get("next_submit_score")),
+                help="Any valid pack at or above this public-score line should be submitted immediately.",
+            )
 
             st.markdown("<div style='margin-top: 1rem;'><strong>Operator Note</strong></div>", unsafe_allow_html=True)
             st.code((operator_note().strip() or "No persistent steering note saved.")[:900], language="text")
@@ -1269,6 +1316,27 @@ def render_dashboard() -> None:
             st.markdown("- Use Tailscale for remote access outside your home network.")
             st.markdown("- Keep the UI password enabled for deployed access.")
 
+    with tab_portal:
+        st.markdown('<div class="panel"><h4>Unified Web Portal</h4><div class="panel-copy">The cinematic website and this local ops console now sit in one workflow. Launch the public-facing surface, secure entry, or the web command deck without leaving the dashboard.</div></div>', unsafe_allow_html=True)
+        portal_view = st.radio(
+            "Website surface",
+            options=["Landing", "Secure Entry", "Web Command Deck"],
+            horizontal=True,
+            key="portal_surface_view",
+        )
+        portal_map = {
+            "Landing": f"{WEBSITE_BASE_URL}/index.html",
+            "Secure Entry": f"{WEBSITE_BASE_URL}/auth.html",
+            "Web Command Deck": f"{WEBSITE_BASE_URL}/app.html",
+        }
+        portal_url = portal_map[portal_view]
+        portal_links = st.columns(3)
+        portal_links[0].markdown(f"[Open Landing]({WEBSITE_BASE_URL}/index.html)")
+        portal_links[1].markdown(f"[Open Secure Entry]({WEBSITE_BASE_URL}/auth.html)")
+        portal_links[2].markdown(f"[Open Web Command Deck]({WEBSITE_BASE_URL}/app.html)")
+        st.caption(f"Embedded from {WEBSITE_BASE_URL} so the website and the live control core stay tied together.")
+        components.iframe(portal_url, height=960, scrolling=True)
+
     with tab_control:
         st.markdown('<div class="panel"><h4>Autonomy Controls</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and import Kaggle sources.</div></div>', unsafe_allow_html=True)
         allow_submit = st.checkbox(
@@ -1282,10 +1350,10 @@ def render_dashboard() -> None:
             key=control_widget_key("history"),
         )
         delta = st.number_input(
-            "Minimum local delta to care about",
+            "Minimum local delta floor (0 = submit any verified gain)",
             min_value=0.0,
             max_value=1000.0,
-            step=1.0,
+            step=0.5,
             key=control_widget_key("min_local_delta"),
         )
         sleep_seconds = st.number_input(
@@ -1433,7 +1501,7 @@ def render_dashboard() -> None:
             "Persistent steering note for the autonomous planner",
             value=operator_note(),
             height=170,
-            placeholder="Keep seed-preserving swaps near the strongest accepted pack, avoid repeating the last failed family, and only care about large public jumps.",
+            placeholder="Keep seed-preserving swaps near the strongest valid pack, avoid repeating failed families, and submit any verified public gain immediately.",
         )
         note_buttons = st.columns(3)
         if note_buttons[0].button("Save Operator Note", width="stretch"):

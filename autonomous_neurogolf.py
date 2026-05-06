@@ -115,7 +115,7 @@ def _compact_summary(summary: dict) -> str:
         "recent_output_manifests": summary.get("recent_output_manifests", [])[:6],
         "available_cached_candidates": _available_cached_candidates(summary)[:8],
         "imported_sources": summary.get("imported_sources", [])[:10],
-        "campaign_progress": summary.get("campaign_progress", {}),
+        "submission_policy": summary.get("submission_policy", summary.get("campaign_progress", {})),
         "public_seed_hints": summary.get("public_seed_hints", {}),
         "buildable_seed_hints": summary.get("buildable_seed_hints", {}),
         "available_seed_labels": summary.get("available_seed_labels", []),
@@ -1370,7 +1370,7 @@ Default behavior:
         if top_seed is not None:
             seed_label = top_seed[0]
             top_score = float(top_seed[1])
-            should_submit = best_completed is None or top_score >= float(best_completed) + 100.0
+            should_submit = best_completed is None or top_score >= float(best_completed) + 1.0
             submission_message = f"Autonomy fallback tries seed {seed_label}."
             return {
                 "action": "direct_seed_pack",
@@ -1625,6 +1625,46 @@ def maybe_submit(zip_name: str, message: str, manifest: dict, min_local_delta: f
     }
 
 
+def _candidate_public_score_hint(build_manifest: dict, plan: dict, summary: dict) -> float | None:
+    candidates = [
+        build_manifest.get("estimated_live_score"),
+        build_manifest.get("known_score"),
+        build_manifest.get("seed_claimed_public_score"),
+        plan.get("seed_claimed_public_score"),
+    ]
+    seed_label = str(plan.get("seed_label", "")).strip()
+    if seed_label:
+        seed_scores = _seed_score_map(summary)
+        candidates.append(seed_scores.get(seed_label))
+    for raw in candidates:
+        try:
+            if raw is not None:
+                return float(raw)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _should_promote_submit_on_improvement(plan: dict, build_manifest: dict, summary: dict) -> tuple[bool, str]:
+    files = int(build_manifest.get("files") or 0)
+    if files and files < 400:
+        return False, f"build only has {files} task files"
+
+    score_hint = _candidate_public_score_hint(build_manifest, plan, summary)
+    if score_hint is None:
+        return False, "no usable score hint for this candidate"
+
+    best_completed_raw = summary.get("best_completed_public_score")
+    if best_completed_raw is None:
+        return True, f"no completed public score exists yet; candidate proxy is {score_hint:.2f}"
+
+    best_completed = float(best_completed_raw)
+    minimum_gain = 1.0
+    if score_hint >= best_completed + minimum_gain:
+        return True, f"candidate proxy {score_hint:.2f} clears the live submit threshold of {best_completed + minimum_gain:.2f}"
+    return False, f"candidate proxy {score_hint:.2f} does not clear {best_completed + minimum_gain:.2f}"
+
+
 def _materialize_plan(plan: dict, summary: dict, campaign: dict) -> dict:
     action = str(plan.get("action", "seed_preserving_build")).strip() or "seed_preserving_build"
     mode = str(plan.get("mode", "processable_best")).strip() or "processable_best"
@@ -1654,7 +1694,7 @@ def _materialize_plan(plan: dict, summary: dict, campaign: dict) -> dict:
         if (
             not bool(plan.get("should_submit", False))
             and seed_label == top_seed_label
-            and (best_completed is None or float(top_seed_score) >= float(best_completed) + 100.0)
+            and (best_completed is None or float(top_seed_score) >= float(best_completed) + 1.0)
         ):
             plan["should_submit"] = False
             plan["rationale"] = str(plan.get("rationale", "")).strip() + " | held for local ONNX validation before any high-score seed submission"
@@ -1816,12 +1856,26 @@ def _submission_decision(
 ) -> dict:
     current_manifest = summary.get("current_manifest") if isinstance(summary.get("current_manifest"), dict) else {}
     matches_current = bool(current_manifest) and candidate_signature == _candidate_signature(current_manifest)
+    submit_message = str(submit_message).strip()
+    if candidate_signature:
+        signature_suffix = candidate_signature[:8]
+        if signature_suffix not in submit_message:
+            submit_message = f"{submit_message} | {signature_suffix}".strip()
     recent_descriptions = {
         str(item.get("description", "")).strip()
         for item in summary.get("recent_submissions", [])
         if str(item.get("description", "")).strip()
     }
     already_submitted = experiment_fingerprint in _submitted_fingerprints(reports)
+
+    if args.allow_submit and not bool(plan.get("should_submit", False)):
+        promote_submit, policy_reason = _should_promote_submit_on_improvement(plan, build_manifest, summary)
+        if promote_submit:
+            plan["should_submit"] = True
+            rationale = str(plan.get("rationale", "")).strip()
+            addition = f"auto-submit policy: {policy_reason}"
+            plan["rationale"] = f"{rationale} | {addition}".strip(" |")
+            _daemon_log(f"submission:promoted {policy_reason}")
 
     if args.allow_submit and bool(plan.get("should_submit", False)):
         if int(summary.get("pending_submission_count", 0)) >= args.max_pending_submissions:

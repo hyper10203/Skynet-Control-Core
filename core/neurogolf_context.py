@@ -14,8 +14,6 @@ from pathlib import Path
 from core.config import (
     KAGGLE_COMPETITION,
     MEMORY_PATH,
-    NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS,
-    NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE,
     NEUROGOLF_AUTONOMY_MAX_HISTORY,
     NEUROGOLF_CURRENT_MANIFEST,
     NEUROGOLF_IMPORTED_SOURCES_DIR,
@@ -164,48 +162,27 @@ LESSONS = [
 
 
 def _campaign_progress(submissions: list[dict]) -> dict:
+    minimum_public_gain = 1.0
     completed = [item for item in submissions if item.get("public_score") is not None]
     if not completed:
         return {
-            "target_public_score": NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE,
-            "target_consecutive_bests": NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS,
+            "submission_mode": "submit_any_public_gain",
+            "minimum_public_gain_to_submit": minimum_public_gain,
             "best_completed_public_score": None,
             "latest_completed_public_score": None,
-            "consecutive_new_best_streak": 0,
-            "goal_reached": False,
+            "next_submit_score": None,
+            "goal_reached": True,
         }
-
-    chronological = list(reversed(completed))
-    best_so_far = float("-inf")
-    consecutive_new_bests = 0
-    for item in chronological:
-        score = float(item["public_score"])
-        if score > best_so_far:
-            consecutive_new_bests += 1
-            best_so_far = score
-        else:
-            consecutive_new_bests = 0
 
     best_completed = max(float(item["public_score"]) for item in completed)
     latest_completed = float(completed[0]["public_score"])
-    # DISABLED: Target score and streak requirements no longer block submissions
-    # goal_reached is always True when targets are 0 (disabled)
-    target_score = float(NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE)
-    target_streak = int(NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS)
-    if target_score <= 0 and target_streak <= 0:
-        goal_reached = True  # Targets disabled - always allow submissions
-    else:
-        goal_reached = (
-            best_completed >= target_score
-            and consecutive_new_bests >= target_streak
-        )
     return {
-        "target_public_score": target_score,
-        "target_consecutive_bests": target_streak,
+        "submission_mode": "submit_any_public_gain",
+        "minimum_public_gain_to_submit": minimum_public_gain,
         "best_completed_public_score": best_completed,
         "latest_completed_public_score": latest_completed,
-        "consecutive_new_best_streak": consecutive_new_bests,
-        "goal_reached": goal_reached,  # Always True when targets are disabled
+        "next_submit_score": best_completed + minimum_public_gain,
+        "goal_reached": True,
     }
 
 
@@ -228,20 +205,9 @@ def _dynamic_lessons(submissions: list[dict]) -> list[str]:
         )
     campaign = _campaign_progress(submissions)
     if campaign["best_completed_public_score"] is not None:
-        target_score = float(campaign["target_public_score"])
-        target_streak = int(campaign["target_consecutive_bests"])
-        # Only show target warnings if targets are enabled (> 0)
-        if target_score > 0:
-            gap = target_score - float(campaign["best_completed_public_score"])
-            if gap > 0:
-                lessons.append(
-                    f"The live campaign target is {target_score:.2f}; current best is {campaign['best_completed_public_score']:.2f}, so the system still needs +{gap:.2f}."
-                )
-        if target_streak > 0:
-            if int(campaign["consecutive_new_best_streak"]) < target_streak:
-                lessons.append(
-                    f"The system has not achieved the required streak yet: {campaign['consecutive_new_best_streak']}/{target_streak} consecutive new best submissions."
-                )
+        lessons.append(
+            f"Submission policy is immediate now: any valid pack that credibly beats {campaign['best_completed_public_score']:.2f} by +{campaign['minimum_public_gain_to_submit']:.2f} should go out."
+        )
     return lessons
 
 
@@ -729,6 +695,7 @@ def summarize_neurogolf_workspace(limit_history: int = NEUROGOLF_AUTONOMY_MAX_HI
         "pending_submission_count": pending_count,
         "current_team_name": next((str(item.get("team_name", "")).strip() for item in submissions if str(item.get("team_name", "")).strip()), ""),
         "campaign_progress": campaign_progress,
+        "submission_policy": campaign_progress,
         "public_seed_hints": public_seed_hints,
         "buildable_seed_hints": buildable_seed_hints,
         "available_seed_labels": available_seed_labels,
