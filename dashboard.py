@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import os
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -48,11 +49,16 @@ from core.runtime_control import (
     recent_reports,
     restart_daemon_async,
     remote_access_endpoints,
+    remote_bridge_status,
     rotate_runtime_node_pairing_token,
     run_single_cycle,
     save_operator_note,
     save_distillation_settings,
     save_imported_seed_controls,
+    list_remote_bridge_nodes,
+    process_remote_bridge_command,
+    publish_remote_bridge_heartbeat,
+    queue_remote_bridge_command,
     save_runtime_node_kaggle_credentials,
     save_runtime_node_settings,
     skynet_clutter_summary as generated_clutter_summary,
@@ -88,6 +94,9 @@ PORTAL_PHASE_LABELS = [
 ]
 
 st.set_page_config(page_title=APP_NAME, page_icon="A", layout="wide")
+
+if "AXIOMGRAPH_BRIDGE_GITHUB_TOKEN" in st.secrets:
+    os.environ["AXIOMGRAPH_BRIDGE_GITHUB_TOKEN"] = str(st.secrets["AXIOMGRAPH_BRIDGE_GITHUB_TOKEN"])
 
 THEME_CSS = """
 <style>
@@ -1237,6 +1246,18 @@ def render_dashboard() -> None:
     except Exception as e:
         st.warning(f"Failed to load runtime node summary: {e}")
         node_summary = {}
+    
+    try:
+        bridge_summary = remote_bridge_status()
+    except Exception as e:
+        st.warning(f"Failed to load remote bridge status: {e}")
+        bridge_summary = {}
+    
+    try:
+        remote_nodes = list_remote_bridge_nodes()
+    except Exception as e:
+        st.warning(f"Failed to load remote bridge nodes: {e}")
+        remote_nodes = []
 
     daemon_badge_class = "badge-online" if daemon.get("running") else "badge-offline"
     daemon_badge_text = "ONLINE" if daemon.get("running") else "OFFLINE"
@@ -1342,8 +1363,8 @@ def render_dashboard() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_overview, tab_portal, tab_node, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
-        ["Overview", "Portal", "Runtime Node", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
+    tab_overview, tab_portal, tab_node, tab_fleet, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
+        ["Overview", "Portal", "Runtime Node", "Fleet Bridge", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
     )
 
     with tab_overview:
@@ -1583,6 +1604,160 @@ def render_dashboard() -> None:
         path_cols[1].metric("Ollama Models Dir", "FOUND" if node_summary.get("ollama_model_dir_exists") else "UNSET")
         path_cols[2].metric("Remote Center", "SET" if node_summary.get("remote_control_url") else "UNSET")
         path_cols[2].caption(str(node_summary.get("remote_control_url") or "No remote control URL configured."))
+
+        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        st.subheader("Node Bridge")
+        bridge_cols = st.columns(4)
+        bridge_cols[0].metric("Bridge Repo", bridge_summary.get("repo") or "unset")
+        bridge_cols[1].metric("Bridge Branch", bridge_summary.get("branch") or "unset")
+        bridge_cols[2].metric("Token", "READY" if bridge_summary.get("token_available") else "MISSING")
+        bridge_cols[3].metric("Remote Nodes", len(remote_nodes))
+        bridge_actions = st.columns(3)
+        if bridge_actions[0].button("Publish Heartbeat", width="stretch"):
+            set_action_result(
+                "Runtime node heartbeat published.",
+                publish_remote_bridge_heartbeat(),
+            )
+            st.rerun()
+        if bridge_actions[1].button("Poll Remote Command", width="stretch"):
+            set_action_result(
+                "Remote bridge command poll finished.",
+                process_remote_bridge_command(),
+            )
+            st.rerun()
+        if bridge_actions[2].button("Heartbeat + Poll", width="stretch"):
+            heartbeat_result = publish_remote_bridge_heartbeat()
+            command_result = process_remote_bridge_command()
+            set_action_result(
+                "Runtime node bridge roundtrip finished.",
+                {
+                    "ok": bool(heartbeat_result.get("ok", False)) and bool(command_result.get("ok", True)),
+                    "stdout": "\n\n".join(
+                        part
+                        for part in [
+                            heartbeat_result.get("stdout", "").strip(),
+                            command_result.get("stdout", "").strip(),
+                        ]
+                        if part
+                    ),
+                    "stderr": "\n\n".join(
+                        part
+                        for part in [
+                            heartbeat_result.get("stderr", "").strip(),
+                            command_result.get("stderr", "").strip(),
+                        ]
+                        if part
+                    ),
+                },
+            )
+            st.rerun()
+
+    with tab_fleet:
+        st.markdown('<div class="panel"><h4>Fleet Bridge</h4><div class="panel-copy">The hosted control center reads node heartbeats from a dedicated GitHub bridge branch and queues commands back to each node. The local node keeps secrets on-device and only polls outward.</div></div>', unsafe_allow_html=True)
+        st.caption(
+            f"Bridge target: `{bridge_summary.get('repo', 'n/a')}` on branch `{bridge_summary.get('branch', 'n/a')}`"
+        )
+
+        if not remote_nodes:
+            st.info("No remote nodes have published a heartbeat yet. Use the Runtime Node tab and publish the first heartbeat from the local machine.")
+        else:
+            node_options = {
+                f"{item.get('device_label', 'node')} | {item.get('node_id', 'unknown')}": item
+                for item in remote_nodes
+            }
+            selected_label = st.selectbox("Active node", options=list(node_options.keys()), key="fleet_active_node")
+            active_node = node_options[selected_label]
+            fleet_top = st.columns(4)
+            fleet_top[0].metric("Device", active_node.get("device_label") or "unset")
+            fleet_top[1].metric("Phase", active_node.get("phase") or "idle")
+            fleet_top[2].metric("Best Public", fmt_value(active_node.get("best_completed_public_score")))
+            fleet_top[3].metric("Pending", fmt_value(active_node.get("pending_submission_count"), digits=0))
+
+            action_cols = st.columns(5)
+            if action_cols[0].button("Queue Healthcheck", width="stretch"):
+                set_action_result(
+                    "Remote command queued.",
+                    queue_remote_bridge_command(active_node.get("node_id", ""), "run_healthcheck"),
+                )
+                st.rerun()
+            if action_cols[1].button("Queue Sync", width="stretch"):
+                set_action_result(
+                    "Remote command queued.",
+                    queue_remote_bridge_command(active_node.get("node_id", ""), "sync_state", {"history": 10}),
+                )
+                st.rerun()
+            if action_cols[2].button("Queue One Cycle", width="stretch"):
+                set_action_result(
+                    "Remote command queued.",
+                    queue_remote_bridge_command(
+                        active_node.get("node_id", ""),
+                        "run_single_cycle",
+                        {"allow_submit": False, "history": 10, "min_local_delta": 0.0},
+                    ),
+                )
+                st.rerun()
+            if action_cols[3].button("Queue Restart", width="stretch"):
+                set_action_result(
+                    "Remote command queued.",
+                    queue_remote_bridge_command(
+                        active_node.get("node_id", ""),
+                        "restart_daemon",
+                        {
+                            "allow_submit": True,
+                            "history": 10,
+                            "min_local_delta": 0.0,
+                            "sleep_seconds": 60,
+                            "max_pending_submissions": 2,
+                        },
+                    ),
+                )
+                st.rerun()
+            if action_cols[4].button("Queue Stop", width="stretch"):
+                set_action_result(
+                    "Remote command queued.",
+                    queue_remote_bridge_command(active_node.get("node_id", ""), "stop_daemon", {"reset_state": False}),
+                )
+                st.rerun()
+
+            note_value = st.text_area(
+                "Remote operator note",
+                value="",
+                key="fleet_remote_note",
+                height=120,
+                placeholder="Write an operator note that the local node should save before the next cycle.",
+            )
+            if st.button("Queue Operator Note", width="stretch"):
+                set_action_result(
+                    "Remote operator note queued.",
+                    queue_remote_bridge_command(
+                        active_node.get("node_id", ""),
+                        "save_operator_note",
+                        {"note": note_value},
+                    ),
+                )
+                st.rerun()
+
+            status_left, status_right = st.columns([1.0, 1.0])
+            with status_left:
+                st.subheader("Heartbeat Payload")
+                st.json(active_node)
+            with status_right:
+                st.subheader("All Nodes")
+                st.dataframe(
+                    [
+                        {
+                            "device_label": item.get("device_label"),
+                            "node_id": item.get("node_id"),
+                            "phase": item.get("phase"),
+                            "best_public": item.get("best_completed_public_score"),
+                            "pending": item.get("pending_submission_count"),
+                            "last_seen_at": item.get("last_seen_at"),
+                        }
+                        for item in remote_nodes
+                    ],
+                    width="stretch",
+                    hide_index=True,
+                )
 
     with tab_control:
         st.markdown('<div class="panel"><h4>Autonomy Controls</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and import Kaggle sources.</div></div>', unsafe_allow_html=True)

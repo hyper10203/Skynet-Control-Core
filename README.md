@@ -66,6 +66,17 @@ The system is now moving toward a two-part shape:
 
 This keeps the powerful parts local while still giving you a clean remote surface.
 
+### First bridge implementation
+
+The first remote-control bridge uses a dedicated GitHub branch as a transport layer:
+
+- the local Runtime Node publishes heartbeat JSON to `runtime-node-bridge`
+- the hosted Control Center reads node heartbeats from that branch
+- the hosted Control Center can queue JSON commands back to each node
+- the local node polls outward, executes allowed commands, and acknowledges the result
+
+That gives us outbound-only remote control without exposing your laptop directly to the internet.
+
 ## System Layout
 
 ```mermaid

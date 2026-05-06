@@ -58,26 +58,42 @@ def _resolve_local_path(raw: str | Path, fallback: Path) -> Path:
 def load_runtime_node_state() -> dict[str, str]:
     state = _default_state()
     path = AXIOMGRAPH_RUNTIME_NODE_STATE_PATH
+    dirty = False
     if path.exists():
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(payload, dict):
                 state.update({key: str(value) for key, value in payload.items() if value is not None})
         except Exception:
-            pass
+            dirty = True
+    else:
+        dirty = True
     if not state.get("node_id"):
         state["node_id"] = secrets.token_hex(8)
+        dirty = True
     if not state.get("pair_token"):
         state["pair_token"] = secrets.token_urlsafe(24)
+        dirty = True
     if not state.get("device_label"):
         state["device_label"] = _default_label()
+        dirty = True
     if not state.get("remote_control_url"):
         state["remote_control_url"] = AXIOMGRAPH_REMOTE_CONTROL_URL
+        dirty = True
+    if dirty:
+        save_runtime_node_state(state)
     return state
 
 
 def save_runtime_node_state(state: dict[str, str]) -> Path:
-    payload = load_runtime_node_state()
+    payload = _default_state()
+    if AXIOMGRAPH_RUNTIME_NODE_STATE_PATH.exists():
+        try:
+            current = json.loads(AXIOMGRAPH_RUNTIME_NODE_STATE_PATH.read_text(encoding="utf-8"))
+            if isinstance(current, dict):
+                payload.update({key: str(value) for key, value in current.items() if value is not None})
+        except Exception:
+            pass
     payload.update({key: str(value) for key, value in state.items() if value is not None})
     AXIOMGRAPH_RUNTIME_NODE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     AXIOMGRAPH_RUNTIME_NODE_STATE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")

@@ -189,3 +189,16 @@ AXIOMGRAPH_NODE_LABEL = os.getenv(
     "AXIOMGRAPH_NODE_LABEL",
     os.getenv("COMPUTERNAME", "AxiomGraph Runtime Node"),
 ).strip()
+AXIOMGRAPH_BRIDGE_REPO = os.getenv(
+    "AXIOMGRAPH_BRIDGE_REPO",
+    "hyper10203/Skynet-Control-Core",
+).strip()
+AXIOMGRAPH_BRIDGE_BRANCH = os.getenv(
+    "AXIOMGRAPH_BRIDGE_BRANCH",
+    "runtime-node-bridge",
+).strip()
+AXIOMGRAPH_BRIDGE_ROOT = os.getenv(
+    "AXIOMGRAPH_BRIDGE_ROOT",
+    "bridge",
+).strip()
+AXIOMGRAPH_BRIDGE_GITHUB_TOKEN = os.getenv("AXIOMGRAPH_BRIDGE_GITHUB_TOKEN", "").strip()

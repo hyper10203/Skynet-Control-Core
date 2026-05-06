@@ -29,7 +29,10 @@ Paste secrets into Community Cloud app settings instead of committing them:
 
 ```toml
 SKYNET_UI_PASSWORD = "choose-a-password"
+AXIOMGRAPH_BRIDGE_GITHUB_TOKEN = "your-github-token-for-bridge-writes"
 ```
+
+Use a token that can update the repository contents on the bridge branch. A fine-grained GitHub token limited to this repo is the right long-term choice.
 
 ## Create app values
 

@@ -47,6 +47,14 @@ from core.runtime_node import (
     save_kaggle_credentials,
     save_runtime_node_settings as save_runtime_node_settings_impl,
 )
+from core.remote_bridge import (
+    bridge_settings,
+    bridge_token_available,
+    list_bridge_nodes,
+    process_runtime_node_command,
+    publish_runtime_node_heartbeat,
+    queue_runtime_node_command,
+)
 
 
 def _normalize_csv_row(row: dict) -> dict:
@@ -552,6 +560,35 @@ def runtime_node_healthcheck() -> dict:
         "checks": checks,
         "summary": summary,
     }
+
+
+def remote_bridge_status() -> dict:
+    settings = bridge_settings()
+    summary = runtime_node_summary()
+    return {
+        "repo": settings["repo"],
+        "branch": settings["branch"],
+        "root": settings["root"],
+        "token_available": bridge_token_available(allow_cli=True),
+        "node_id": summary.get("node_id"),
+        "pairing_code": summary.get("pairing_code"),
+    }
+
+
+def publish_remote_bridge_heartbeat() -> dict:
+    return publish_runtime_node_heartbeat()
+
+
+def process_remote_bridge_command() -> dict:
+    return process_runtime_node_command()
+
+
+def list_remote_bridge_nodes() -> list[dict]:
+    return list_bridge_nodes()
+
+
+def queue_remote_bridge_command(node_id: str, action: str, args: dict | None = None) -> dict:
+    return queue_runtime_node_command(node_id, action, args=args or {})
 
 
 def run_single_cycle(*, allow_submit: bool, history: int, min_local_delta: float) -> dict:
