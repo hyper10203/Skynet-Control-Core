@@ -3,7 +3,13 @@
   "node_id": "c3e9e4b8ff0a38d4",
   "action": "run_healthcheck",
   "args": {},
-  "status": "pending",
+  "status": "executed",
   "requested_at": "2026-05-06T06:59:40Z",
-  "requested_by": "remote-control-center"
+  "requested_by": "remote-control-center",
+  "executed_at": "2026-05-06T07:05:50Z",
+  "result": {
+    "ok": true,
+    "stdout": "Ollama base URL: http://localhost:11434\norchestrator: qwen3:8b -> ok | options={'num_ctx': 8192, 'temperature': 0.2, 'num_predict': 220}\noperator_fast: qwen2.5 -> ok | options={'num_ctx': 4096, 'temperature': 0.15, 'num_predict': 180}\nreasoning_primary: mistral:7b-text-fp16 -> ok | options={'num_ctx': 8192, 'temperature': 0.3, 'num_predict': 350}\nreasoning_secondary: gemma3:12b -> ok | options={'num_ctx': 16384, 'temperature': 0.5, 'num_predict': 260}\nreasoning_tertiary: llama3 -> ok | options={'num_ctx': 4096, 'temperature': 0.35, 'num_predict': 260}\ncoder: qwen2.5-coder -> ok | options={'num_ctx': 8192, 'temperature': 0.2, 'num_predict': 700}\ncritic: qwen3:8b -> ok | options={'num_ctx': 6144, 'temperature': 0.2, 'num_predict': 220}\n",
+    "stderr": ""
+  }
 }
