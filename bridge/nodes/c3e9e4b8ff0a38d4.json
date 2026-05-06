@@ -13,7 +13,7 @@
     "status": "running",
     "status_updated_at": "2026-05-06T08:34:57Z",
     "status_stale": false,
-    "status_age_seconds": 633.771719
+    "status_age_seconds": 652.765932
   },
   "phase": "building",
   "message": "Building open blend (sanitized static blend)",
@@ -13250,7 +13250,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_083300.json"
   },
-  "last_seen_at": "2026-05-06T08:45:30Z",
+  "last_seen_at": "2026-05-06T08:45:49Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
