@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hmac
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,6 +63,24 @@ from core.runtime_control import (
 APP_NAME = "AxiomGraph Operations Core"
 APP_SHORT_NAME = "AxiomGraph"
 WEBSITE_BASE_URL = "http://127.0.0.1:4173"
+PORTAL_ASSET_DIR = Path(__file__).resolve().parent / "assets" / "portal"
+PORTAL_PREVIEW_IMAGES = {
+    "landing": PORTAL_ASSET_DIR / "landing-desktop-final.png",
+    "auth": PORTAL_ASSET_DIR / "auth-final.png",
+    "app": PORTAL_ASSET_DIR / "app-desktop-final.png",
+}
+PORTAL_PHASE_IMAGES = [
+    PORTAL_ASSET_DIR / "core-phase-1.png",
+    PORTAL_ASSET_DIR / "core-phase-2.png",
+    PORTAL_ASSET_DIR / "core-phase-3.png",
+    PORTAL_ASSET_DIR / "core-phase-4.png",
+]
+PORTAL_PHASE_LABELS = [
+    "Wake the core",
+    "Expand the graph",
+    "Reveal the command plane",
+    "Lock operator control",
+]
 
 st.set_page_config(page_title=APP_NAME, page_icon="A", layout="wide")
 
@@ -659,6 +679,83 @@ def cached_rank(team_name: str) -> dict:
 @st.cache_data(ttl=300)
 def cached_tasks(data_dir: str) -> list[dict]:
     return load_tasks(data_dir)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def website_portal_available(base_url: str) -> bool:
+    try:
+        with urlopen(f"{base_url}/index.html", timeout=1.2) as response:
+            return 200 <= getattr(response, "status", 200) < 400
+    except (URLError, TimeoutError, OSError, ValueError):
+        return False
+
+
+def render_portal_fallback(
+    *,
+    daemon: dict,
+    rank_info: dict,
+    latest_completed: dict,
+    latest_report: dict,
+    submission_policy: dict,
+) -> None:
+    st.caption(
+        "Local website service is not reachable, so this Streamlit deployment is carrying the portal surface directly."
+    )
+
+    hero_left, hero_right = st.columns([1.02, 0.98])
+    with hero_left:
+        st.markdown("### A cinematic shell for the live control core")
+        st.write(
+            "This deployment keeps the landing narrative, operator framing, and command visibility inside the same "
+            "Streamlit runtime that controls the NeuroGolf loop. When the separate Node website is available, the "
+            "Portal tab embeds it live. When it is not, the core experience still ships as one app."
+        )
+        metric_cols = st.columns(4)
+        metric_cols[0].metric("Daemon", "Online" if daemon.get("running") else "Offline")
+        metric_cols[1].metric("Rank", fmt_value(rank_info.get("rank"), digits=0))
+        metric_cols[2].metric("Best Public", fmt_value(latest_completed.get("public_score")))
+        metric_cols[3].metric(
+            "Next Submit",
+            fmt_value(submission_policy.get("next_submit_score")),
+        )
+        st.markdown(
+            f"**Submit policy:** any verified public gain at or above "
+            f"`{fmt_value(submission_policy.get('minimum_public_gain_to_submit'))}` point."
+        )
+        if latest_report:
+            plan = latest_report.get("plan") or {}
+            st.markdown(
+                f"**Latest cycle:** `{plan.get('action', 'unknown')}` targeting "
+                f"`{plan.get('target') or plan.get('seed_label') or 'n/a'}`"
+            )
+    with hero_right:
+        landing_preview = PORTAL_PREVIEW_IMAGES["landing"]
+        if landing_preview.exists():
+            st.image(str(landing_preview), caption="Streamlit-hosted landing preview", use_container_width=True)
+        else:
+            st.info("Landing preview asset is not available yet in the repo.")
+
+    st.markdown("### Scroll Sequence Frames")
+    phase_cols = st.columns(len(PORTAL_PHASE_IMAGES))
+    for idx, image_path in enumerate(PORTAL_PHASE_IMAGES):
+        with phase_cols[idx]:
+            if image_path.exists():
+                st.image(str(image_path), caption=PORTAL_PHASE_LABELS[idx], use_container_width=True)
+            else:
+                st.warning(PORTAL_PHASE_LABELS[idx])
+
+    st.markdown("### Command Surfaces")
+    preview_cols = st.columns(2)
+    preview_specs = [
+        ("Secure Entry", PORTAL_PREVIEW_IMAGES["auth"]),
+        ("Command Nexus", PORTAL_PREVIEW_IMAGES["app"]),
+    ]
+    for col, (label, image_path) in zip(preview_cols, preview_specs):
+        with col:
+            if image_path.exists():
+                st.image(str(image_path), caption=label, use_container_width=True)
+            else:
+                st.info(f"{label} preview asset is not available yet in the repo.")
 
 
 def set_action_result(label: str, result: dict) -> None:
@@ -1334,8 +1431,17 @@ def render_dashboard() -> None:
         portal_links[0].markdown(f"[Open Landing]({WEBSITE_BASE_URL}/index.html)")
         portal_links[1].markdown(f"[Open Secure Entry]({WEBSITE_BASE_URL}/auth.html)")
         portal_links[2].markdown(f"[Open Web Command Deck]({WEBSITE_BASE_URL}/app.html)")
-        st.caption(f"Embedded from {WEBSITE_BASE_URL} so the website and the live control core stay tied together.")
-        components.iframe(portal_url, height=960, scrolling=True)
+        if website_portal_available(WEBSITE_BASE_URL):
+            st.caption(f"Embedded from {WEBSITE_BASE_URL} so the website and the live control core stay tied together.")
+            components.iframe(portal_url, height=960, scrolling=True)
+        else:
+            render_portal_fallback(
+                daemon=daemon,
+                rank_info=rank_info,
+                latest_completed=latest_completed,
+                latest_report=latest_report,
+                submission_policy=submission_policy,
+            )
 
     with tab_control:
         st.markdown('<div class="panel"><h4>Autonomy Controls</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and import Kaggle sources.</div></div>', unsafe_allow_html=True)
