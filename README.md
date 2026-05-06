@@ -79,6 +79,12 @@ That gives us outbound-only remote control without exposing your laptop directly
 
 The local Runtime Node can also keep a small bridge loop running in the background. That loop publishes fresh heartbeats, polls for remote commands, and lets the hosted Control Center steer the machine even when the Streamlit dashboard is closed.
 
+For day-to-day local use, start the full machine-facing surface with:
+
+- `start_runtime_node.ps1` for the dashboard + bridge
+- `start_runtime_node.ps1 -StartAutonomy -AllowSubmit` when you want the local solver loop live immediately
+- `stop_runtime_node.ps1` to stop the dashboard, bridge, and local daemon together
+
 ## System Layout
 
 ```mermaid

@@ -62,6 +62,7 @@ from core.runtime_control import (
     queue_remote_bridge_command,
     restart_bridge_daemon_async,
     save_runtime_node_kaggle_credentials,
+    save_runtime_node_operator_binding,
     save_runtime_node_settings,
     skynet_clutter_summary as generated_clutter_summary,
     start_bridge_daemon,
@@ -797,12 +798,27 @@ def show_action_result() -> None:
 
 
 def shutdown_and_logout() -> dict:
-    result = stop_daemon()
+    daemon_result = stop_daemon(reset_state=False)
+    bridge_result = stop_bridge_daemon()
     st.session_state[AUTH_STATE_KEY] = False
     st.session_state.pop("orchestrator_chat_messages", None)
     st.session_state.pop("last_action", None)
     st.cache_data.clear()
-    return result
+    return {
+        "ok": bool(daemon_result.get("ok", False)) and bool(bridge_result.get("ok", True)),
+        "stdout": "\n".join(
+            part for part in [
+                daemon_result.get("stdout", "").strip(),
+                bridge_result.get("stdout", "").strip(),
+            ] if part
+        ),
+        "stderr": "\n".join(
+            part for part in [
+                daemon_result.get("stderr", "").strip(),
+                bridge_result.get("stderr", "").strip(),
+            ] if part
+        ),
+    }
 
 
 def role_widget_key(role: str) -> str:
@@ -1550,6 +1566,20 @@ def render_dashboard() -> None:
             st.caption(
                 "The remote control center should pair this machine using the node ID plus pair token. Keep the token local and rotate it whenever you rebind the device."
             )
+            operator_email_value = st.text_input(
+                "Bound operator email",
+                value=str(node_summary.get("registered_operator_email") or ""),
+                key="runtime_node_operator_email",
+                placeholder="subham.choudhury11438@gmail.com",
+            )
+            if st.button("Save Operator Binding", width="stretch"):
+                set_action_result(
+                    "Runtime node operator binding saved.",
+                    save_runtime_node_operator_binding(operator_email_value),
+                )
+                st.rerun()
+            if node_summary.get("paired_at"):
+                st.caption(f"Paired at `{node_summary.get('paired_at')}`")
             rotate_cols = st.columns([1, 1])
             if rotate_cols[0].button("Rotate Pairing Token", width="stretch"):
                 set_action_result(

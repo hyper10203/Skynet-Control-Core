@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import socket
+from datetime import datetime, timezone
 from pathlib import Path
 
 from core.config import (
@@ -154,7 +155,9 @@ def register_paired_operator(email: str) -> dict[str, str]:
     state = load_runtime_node_state()
     state["registered_operator_email"] = str(email).strip()
     if state["registered_operator_email"]:
-        state["paired_at"] = state.get("paired_at") or ""
+        state["paired_at"] = state.get("paired_at") or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    else:
+        state["paired_at"] = ""
     save_runtime_node_state(state)
     return state
 

@@ -46,6 +46,7 @@ from core.maintenance import archive_clutter, find_clutter
 from core.model_profiles import default_context_for_model
 from core.runtime_node import (
     load_runtime_node_summary,
+    register_paired_operator,
     rotate_pair_token,
     save_kaggle_credentials,
     save_runtime_node_settings as save_runtime_node_settings_impl,
@@ -354,11 +355,18 @@ def start_daemon(*, allow_submit: bool, history: int, min_local_delta: float, sl
         sleep_seconds=sleep_seconds,
         max_pending_submissions=max_pending_submissions,
     )
+    bridge_interval = int(load_env_settings().get("AXIOMGRAPH_BRIDGE_LOOP_SECONDS", str(AXIOMGRAPH_BRIDGE_LOOP_SECONDS)))
+    bridge_result = start_bridge_daemon(interval_seconds=bridge_interval)
     current = daemon_status()
     if current.get("running"):
         return {
             "ok": True,
-            "stdout": f"Autonomy daemon already running with PID {current.get('pid')}",
+            "stdout": "\n".join(
+                part for part in [
+                    bridge_result.get("stdout", "").strip(),
+                    f"Autonomy daemon already running with PID {current.get('pid')}",
+                ] if part
+            ),
             "stderr": "",
         }
     command = [
@@ -395,7 +403,12 @@ def start_daemon(*, allow_submit: bool, history: int, min_local_delta: float, sl
     stderr_handle.close()
     return {
         "ok": True,
-        "stdout": "Autonomy daemon start requested in background. Check live status or launcher logs if boot takes a moment.",
+        "stdout": "\n".join(
+            part for part in [
+                bridge_result.get("stdout", "").strip(),
+                "Autonomy daemon start requested in background. Check live status or launcher logs if boot takes a moment.",
+            ] if part
+        ),
         "stderr": "",
     }
 
@@ -468,6 +481,8 @@ def restart_daemon_async(*, allow_submit: bool, history: int, min_local_delta: f
         sleep_seconds=sleep_seconds,
         max_pending_submissions=max_pending_submissions,
     )
+    bridge_interval = int(load_env_settings().get("AXIOMGRAPH_BRIDGE_LOOP_SECONDS", str(AXIOMGRAPH_BRIDGE_LOOP_SECONDS)))
+    bridge_result = restart_bridge_daemon_async(interval_seconds=bridge_interval)
     command = [
         "powershell",
         "-ExecutionPolicy",
@@ -488,7 +503,12 @@ def restart_daemon_async(*, allow_submit: bool, history: int, min_local_delta: f
     subprocess.Popen(command, cwd=PROJECT_ROOT)
     return {
         "ok": True,
-        "stdout": "Restart requested in background.",
+        "stdout": "\n".join(
+            part for part in [
+                bridge_result.get("stdout", "").strip(),
+                "Restart requested in background.",
+            ] if part
+        ),
         "stderr": "",
     }
 
@@ -507,6 +527,16 @@ def healthcheck() -> dict:
 
 def runtime_node_summary() -> dict:
     return load_runtime_node_summary()
+
+
+def save_runtime_node_operator_binding(email: str) -> dict:
+    state = register_paired_operator(email)
+    return {
+        "ok": True,
+        "stdout": "Runtime node operator binding saved.",
+        "stderr": "",
+        "state": state,
+    }
 
 
 def save_runtime_node_settings(
