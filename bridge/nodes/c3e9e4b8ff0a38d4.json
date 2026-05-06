@@ -16,7 +16,7 @@
     "status": "running",
     "status_updated_at": "2026-05-06T20:36:59Z",
     "status_stale": false,
-    "status_age_seconds": 23.105392
+    "status_age_seconds": 40.93605
   },
   "phase": "reasoning",
   "message": "Querying reasoning_primary: mistral:7b-text-fp16",
@@ -1336,7 +1336,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_203550.json"
   },
-  "last_seen_at": "2026-05-06T20:37:22Z",
+  "last_seen_at": "2026-05-06T20:37:40Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
