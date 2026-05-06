@@ -23,13 +23,13 @@
 
 ## What This Is
 
-AxiomGraph Operations Core is a local AI operations stack for:
+AxiomGraph Operations Core is now tuned as a private owner-operated AI stack for:
 
 - ARC-style symbolic reasoning
 - NeuroGolf submission optimization
 - multi-model orchestration through Ollama
 - Kaggle source intake and score-aware submission workflows
-- live monitoring through a Streamlit GUI
+- live monitoring through a private Streamlit control surface
 
 You talk to one front-door system. It decides when to keep work local and when to wake specialist models.
 
@@ -64,18 +64,18 @@ The system is now moving toward a two-part shape:
 - **AxiomGraph Runtime Node**: the installed local engine that owns Kaggle auth, Ollama, local model paths, the NeuroGolf workspace, daemon execution, and submissions
 - **AxiomGraph Control Center**: the remote-facing website and hosted portal that owns landing/login/device views, telemetry, command history, and operator control
 
-This keeps the powerful parts local while still giving you a clean remote surface.
+This keeps the powerful parts local while still giving you a clean remote surface that is meant for one owner, not a public multi-user product.
 
 ### First bridge implementation
 
-The first remote-control bridge uses a dedicated GitHub branch as a transport layer:
+The first private remote-control bridge uses a dedicated GitHub branch as a transport layer:
 
 - the local Runtime Node publishes heartbeat JSON to `runtime-node-bridge`
 - the hosted Control Center reads node heartbeats from that branch
 - the hosted Control Center can queue JSON commands back to each node
 - the local node polls outward, executes allowed commands, and acknowledges the result
 
-That gives us outbound-only remote control without exposing your laptop directly to the internet.
+That gives us outbound-only private remote control without exposing your laptop directly to the internet.
 
 The local Runtime Node can also keep a small bridge loop running in the background. That loop publishes fresh heartbeats, polls for remote commands, and lets the hosted Control Center steer the machine even when the Streamlit dashboard is closed.
 
@@ -240,4 +240,4 @@ It is a working local operations system for ARC and NeuroGolf:
 - memory-backed
 - operator-steerable
 
-If your goal is to leave the machine running and let a coordinated local model team keep pushing the competition forward, this repo is built for that.
+If your goal is to leave the machine running and remotely steer your own local model team without handing secrets to the cloud, this repo is built for that.

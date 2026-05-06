@@ -1279,6 +1279,15 @@ def render_dashboard() -> None:
     except Exception as e:
         st.warning(f"Failed to load remote bridge nodes: {e}")
         remote_nodes = []
+    owner_email = str(node_summary.get("owner_email") or node_summary.get("registered_operator_email") or "").strip()
+    owner_name = str(node_summary.get("owner_name") or "Owner").strip()
+    private_owner_mode = bool(node_summary.get("private_owner_mode", False))
+    if private_owner_mode and owner_email:
+        remote_nodes = [
+            item
+            for item in remote_nodes
+            if str(item.get("owner_email") or item.get("registered_operator_email") or "").strip().lower() in {"", owner_email.lower()}
+        ]
 
     daemon_badge_class = "badge-online" if daemon.get("running") else "badge-offline"
     daemon_badge_text = "ONLINE" if daemon.get("running") else "OFFLINE"
@@ -1298,8 +1307,8 @@ def render_dashboard() -> None:
               <div class="hero-kicker">Local ARC and NeuroGolf Operations</div>
               <h1 class="hero-title">AxiomGraph Operations Core</h1>
               <div class="hero-copy">
-                A focused workbench for ARC reasoning and NeuroGolf graph optimization with daemon control,
-                Kaggle source intake, model-role management, submission telemetry, and ARC task review.
+                A private control surface for {owner_name} to steer ARC reasoning and NeuroGolf graph optimization
+                from anywhere, while Kaggle auth, model paths, and daemon execution stay on the local Runtime Node.
               </div>
               <div class="badge-row">
                 <div class="badge-chip {daemon_badge_class}">● {daemon_badge_text}</div>
@@ -1385,7 +1394,7 @@ def render_dashboard() -> None:
     )
 
     tab_overview, tab_portal, tab_node, tab_fleet, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
-        ["Overview", "Portal", "Runtime Node", "Fleet Bridge", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
+        ["Overview", "Portal", "Runtime Node", "Private Remote", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
     )
 
     with tab_overview:
@@ -1590,21 +1599,22 @@ def render_dashboard() -> None:
                     "remote_control_url": node_summary.get("remote_control_url"),
                     "pairing_code": node_summary.get("pairing_code"),
                     "pair_token": node_summary.get("pair_token"),
-                    "registered_operator_email": node_summary.get("registered_operator_email"),
+                    "owner_name": owner_name,
+                    "owner_email": owner_email,
                 }
             )
             st.caption(
-                "The remote control center should pair this machine using the node ID plus pair token. Keep the token local and rotate it whenever you rebind the device."
+                "This Runtime Node is configured for private owner access. Pair the remote control surface with the node ID plus pair token, keep the token local, and rotate it whenever you rebind the machine."
             )
             operator_email_value = st.text_input(
-                "Bound operator email",
-                value=str(node_summary.get("registered_operator_email") or ""),
+                "Owner email",
+                value=owner_email,
                 key="runtime_node_operator_email",
                 placeholder="subham.choudhury11438@gmail.com",
             )
-            if st.button("Save Operator Binding", width="stretch"):
+            if st.button("Save Owner Binding", width="stretch"):
                 set_action_result(
-                    "Runtime node operator binding saved.",
+                    "Runtime node owner binding saved.",
                     save_runtime_node_operator_binding(operator_email_value),
                 )
                 st.rerun()
@@ -1660,7 +1670,7 @@ def render_dashboard() -> None:
             set_action_result("Healthcheck finished.", healthcheck())
             st.rerun()
         kaggle_actions[2].caption(
-            "Installed-app flow: save Kaggle auth locally, point to your Ollama models, then pair this node to the remote site for telemetry and commands."
+            "Private-owner flow: save Kaggle auth locally, point to your model stack, then pair this node to your remote control surface for telemetry and commands."
         )
 
         path_cols = st.columns(3)
@@ -1684,13 +1694,13 @@ def render_dashboard() -> None:
             )
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
-        st.subheader("Node Bridge")
+        st.subheader("Private Remote Bridge")
         bridge_daemon = bridge_summary.get("bridge_daemon", {}) if isinstance(bridge_summary.get("bridge_daemon"), dict) else {}
         bridge_cols = st.columns(4)
         bridge_cols[0].metric("Bridge Repo", bridge_summary.get("repo") or "unset")
         bridge_cols[1].metric("Bridge Branch", bridge_summary.get("branch") or "unset")
         bridge_cols[2].metric("Token", "READY" if bridge_summary.get("token_available") else "MISSING")
-        bridge_cols[3].metric("Remote Nodes", len(remote_nodes))
+        bridge_cols[3].metric("Owner Nodes", len(remote_nodes))
 
         bridge_status_cols = st.columns(4)
         bridge_status_cols[0].metric("Bridge Loop", "ONLINE" if bridge_daemon.get("running") else "OFFLINE")
@@ -1771,25 +1781,28 @@ def render_dashboard() -> None:
             st.rerun()
 
     with tab_fleet:
-        st.markdown('<div class="panel"><h4>Fleet Bridge</h4><div class="panel-copy">The hosted control center reads node heartbeats from a dedicated GitHub bridge branch and queues commands back to each node. The local node keeps secrets on-device and only polls outward.</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="panel"><h4>Private Remote Control</h4><div class="panel-copy">This bridge is locked to {owner_name}. The hosted control surface reads private Runtime Node heartbeats from a dedicated GitHub branch and queues commands back without exposing local secrets.</div></div>', unsafe_allow_html=True)
         st.caption(
             f"Bridge target: `{bridge_summary.get('repo', 'n/a')}` on branch `{bridge_summary.get('branch', 'n/a')}`"
         )
 
         if not remote_nodes:
-            st.info("No remote nodes have published a heartbeat yet. Use the Runtime Node tab and publish the first heartbeat from the local machine.")
+            st.info("No private Runtime Node heartbeat is visible yet. Use the Runtime Node tab and publish the first heartbeat from your local machine.")
         else:
             node_options = {
                 f"{item.get('device_label', 'node')} | {item.get('node_id', 'unknown')}": item
                 for item in remote_nodes
             }
-            selected_label = st.selectbox("Active node", options=list(node_options.keys()), key="fleet_active_node")
+            selected_label = st.selectbox("Active private node", options=list(node_options.keys()), key="fleet_active_node")
             active_node = node_options[selected_label]
             fleet_top = st.columns(4)
             fleet_top[0].metric("Device", active_node.get("device_label") or "unset")
             fleet_top[1].metric("Phase", active_node.get("phase") or "idle")
             fleet_top[2].metric("Best Public", fmt_value(active_node.get("best_completed_public_score")))
             fleet_top[3].metric("Pending", fmt_value(active_node.get("pending_submission_count"), digits=0))
+            st.caption(
+                f"Owner: `{active_node.get('owner_name') or owner_name}` <{active_node.get('owner_email') or owner_email or 'unset'}> | Scope: `{active_node.get('access_scope') or 'private_owner'}`"
+            )
 
             action_cols = st.columns(5)
             if action_cols[0].button("Queue Healthcheck", width="stretch"):
@@ -1838,15 +1851,15 @@ def render_dashboard() -> None:
                 st.rerun()
 
             note_value = st.text_area(
-                "Remote operator note",
+                "Remote owner note",
                 value="",
                 key="fleet_remote_note",
                 height=120,
-                placeholder="Write an operator note that the local node should save before the next cycle.",
+                placeholder="Write a private note that the local node should save before the next cycle.",
             )
             if st.button("Queue Operator Note", width="stretch"):
                 set_action_result(
-                    "Remote operator note queued.",
+                    "Remote owner note queued.",
                     queue_remote_bridge_command(
                         active_node.get("node_id", ""),
                         "save_operator_note",
@@ -1860,11 +1873,12 @@ def render_dashboard() -> None:
                 st.subheader("Heartbeat Payload")
                 st.json(active_node)
             with status_right:
-                st.subheader("All Nodes")
+                st.subheader("Private Nodes")
                 st.dataframe(
                     [
                         {
                             "device_label": item.get("device_label"),
+                            "owner_email": item.get("owner_email") or item.get("registered_operator_email"),
                             "node_id": item.get("node_id"),
                             "phase": item.get("phase"),
                             "best_public": item.get("best_completed_public_score"),

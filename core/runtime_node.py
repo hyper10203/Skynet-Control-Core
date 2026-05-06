@@ -10,6 +10,9 @@ from pathlib import Path
 
 from core.config import (
     AXIOMGRAPH_NODE_LABEL,
+    AXIOMGRAPH_OWNER_EMAIL,
+    AXIOMGRAPH_OWNER_NAME,
+    AXIOMGRAPH_PRIVATE_OWNER_MODE,
     AXIOMGRAPH_REMOTE_CONTROL_URL,
     AXIOMGRAPH_RUNTIME_NODE_STATE_PATH,
     KAGGLE_CONFIG_DIR,
@@ -36,6 +39,7 @@ def _default_label() -> str:
 
 def _default_state() -> dict[str, str]:
     env_settings = load_env_settings()
+    owner_email = str(env_settings.get("AXIOMGRAPH_OWNER_EMAIL") or AXIOMGRAPH_OWNER_EMAIL).strip()
     return {
         "node_id": secrets.token_hex(8),
         "pair_token": secrets.token_urlsafe(24),
@@ -43,7 +47,7 @@ def _default_state() -> dict[str, str]:
         "remote_control_url": str(
             env_settings.get("AXIOMGRAPH_REMOTE_CONTROL_URL") or AXIOMGRAPH_REMOTE_CONTROL_URL
         ).strip(),
-        "registered_operator_email": "",
+        "registered_operator_email": owner_email if owner_email and AXIOMGRAPH_PRIVATE_OWNER_MODE else "",
         "paired_at": "",
     }
 
@@ -85,6 +89,9 @@ def load_runtime_node_state() -> dict[str, str]:
         dirty = True
     if not state.get("remote_control_url"):
         state["remote_control_url"] = AXIOMGRAPH_REMOTE_CONTROL_URL
+        dirty = True
+    if AXIOMGRAPH_PRIVATE_OWNER_MODE and not state.get("registered_operator_email") and AXIOMGRAPH_OWNER_EMAIL:
+        state["registered_operator_email"] = AXIOMGRAPH_OWNER_EMAIL
         dirty = True
     if dirty:
         save_runtime_node_state(state)
@@ -192,6 +199,8 @@ def load_runtime_node_summary() -> dict:
         NEUROGOLF_PROJECT_ROOT,
     )
     workspace_root = str(workspace_root_path)
+    owner_email = str(env_settings.get("AXIOMGRAPH_OWNER_EMAIL") or AXIOMGRAPH_OWNER_EMAIL).strip()
+    owner_name = str(env_settings.get("AXIOMGRAPH_OWNER_NAME") or AXIOMGRAPH_OWNER_NAME).strip()
     llm_backend = str(env_settings.get("LLM_BACKEND") or LLM_BACKEND).strip().lower() or "ollama"
     ollama_base_url = str(env_settings.get("OLLAMA_BASE_URL") or OLLAMA_BASE_URL).strip()
     raw_ollama_model_dir = str(env_settings.get("OLLAMA_MODEL_DIR") or OLLAMA_MODEL_DIR).strip()
@@ -222,6 +231,10 @@ def load_runtime_node_summary() -> dict:
         "pair_token": state.get("pair_token", ""),
         "pairing_code": _pairing_code(state.get("node_id", ""), state.get("pair_token", "")),
         "registered_operator_email": state.get("registered_operator_email", ""),
+        "owner_email": owner_email,
+        "owner_name": owner_name,
+        "private_owner_mode": AXIOMGRAPH_PRIVATE_OWNER_MODE,
+        "access_scope": "private_owner" if AXIOMGRAPH_PRIVATE_OWNER_MODE else "shared",
         "paired_at": state.get("paired_at", ""),
         "workspace_root": workspace_root,
         "workspace_exists": workspace_root_path.exists(),

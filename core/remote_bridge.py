@@ -202,6 +202,9 @@ def _build_runtime_node_payload() -> dict[str, Any]:
     payload: dict[str, Any] = {
         "node_id": summary.get("node_id"),
         "device_label": summary.get("device_label"),
+        "owner_name": summary.get("owner_name"),
+        "owner_email": summary.get("owner_email") or summary.get("registered_operator_email"),
+        "access_scope": summary.get("access_scope", "private_owner"),
         "remote_control_url": summary.get("remote_control_url"),
         "workspace_root": summary.get("workspace_root"),
         "kaggle_username": summary.get("kaggle_username"),

@@ -206,6 +206,18 @@ AXIOMGRAPH_NODE_LABEL = os.getenv(
     "AXIOMGRAPH_NODE_LABEL",
     os.getenv("COMPUTERNAME", "AxiomGraph Runtime Node"),
 ).strip()
+AXIOMGRAPH_PRIVATE_OWNER_MODE = os.getenv(
+    "AXIOMGRAPH_PRIVATE_OWNER_MODE",
+    "1",
+).strip().lower() not in {"0", "false", "no"}
+AXIOMGRAPH_OWNER_EMAIL = os.getenv(
+    "AXIOMGRAPH_OWNER_EMAIL",
+    "subham.choudhury11438@gmail.com",
+).strip()
+AXIOMGRAPH_OWNER_NAME = os.getenv(
+    "AXIOMGRAPH_OWNER_NAME",
+    "Subham Paul Choudhury",
+).strip()
 AXIOMGRAPH_BRIDGE_REPO = os.getenv(
     "AXIOMGRAPH_BRIDGE_REPO",
     "hyper10203/Skynet-Control-Core",

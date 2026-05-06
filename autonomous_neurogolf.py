@@ -1110,17 +1110,28 @@ def _experiment_fingerprint(plan: dict, build_manifest: dict) -> str:
 
 def _candidate_signature(manifest: dict) -> str:
     tasks: list[str] = []
-    for item in manifest.get("replacements", []):
-        task = str(item.get("task", "")).strip()
-        if task:
-            tasks.append(task)
+    replacements = manifest.get("replacements", [])
+    if isinstance(replacements, dict):
+        for task_name in replacements:
+            task = str(task_name).replace(".onnx", "").strip()
+            if task:
+                tasks.append(task)
+    else:
+        for item in replacements:
+            if not isinstance(item, dict):
+                continue
+            task = str(item.get("task", "")).strip()
+            if task:
+                tasks.append(task)
     for item in manifest.get("replaced", []):
+        if not isinstance(item, dict):
+            continue
         task = str(item.get("task", "")).strip()
         if task:
             tasks.append(task)
     payload = {
         "build_strategy": manifest.get("build_strategy"),
-        "base_zip": manifest.get("seed_zip") or manifest.get("base_zip"),
+        "base_zip": manifest.get("seed_zip") or manifest.get("base_zip") or manifest.get("source_zip"),
         "mode": manifest.get("mode"),
         "preserved_task000": manifest.get("preserved_task000"),
         "replaced_count": manifest.get("replaced_count"),
@@ -1177,7 +1188,38 @@ def _infer_blend_mode_from_manifest(payload: dict, mode_hint: str = "") -> str:
 
 def _normalize_cached_blend_manifest(path: Path, payload: dict, mode_hint: str = "") -> dict:
     manifest = dict(payload)
-    manifest["build_strategy"] = "scorer_blend"
+    build_strategy = str(manifest.get("build_strategy", "")).strip()
+    if not build_strategy:
+        build_strategy = "scorer_blend" if path.name == "submission_manifest.json" else ""
+    if build_strategy == "validated_repair":
+        manifest["validation_status"] = "valid"
+        source_zip = Path(str(manifest.get("source_zip", "")).strip()) if str(manifest.get("source_zip", "")).strip() else None
+        if source_zip is not None:
+            candidate_manifests = [
+                path.parent / f"{source_zip.stem}_manifest.json",
+                path.parent / "submission_manifest.json",
+            ]
+            for source_manifest in candidate_manifests:
+                try:
+                    if source_manifest.resolve() == path.resolve():
+                        continue
+                except Exception:
+                    pass
+                try:
+                    source_payload = json.loads(source_manifest.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                if not isinstance(source_payload, dict):
+                    continue
+                source_zip_path = Path(str(source_payload.get("zip_path", "")).strip()) if str(source_payload.get("zip_path", "")).strip() else None
+                if source_zip_path is None or source_zip_path != source_zip:
+                    continue
+                for key in ("mode", "files", "known_score", "estimated_live_score", "score_scope", "delta_sum_local"):
+                    if manifest.get(key) in (None, "") and source_payload.get(key) not in (None, ""):
+                        manifest[key] = source_payload.get(key)
+                break
+    else:
+        manifest["build_strategy"] = "scorer_blend"
     manifest["mode"] = _infer_blend_mode_from_manifest(manifest, mode_hint)
     manifest["_manifest_path"] = str(path)
     return manifest
@@ -1186,7 +1228,7 @@ def _normalize_cached_blend_manifest(path: Path, payload: dict, mode_hint: str =
 def _find_cached_blend_manifest(mode: str, zip_name: str) -> dict | None:
     outputs_dir = NEUROGOLF_PROJECT_ROOT / "outputs"
     best_manifest: dict | None = None
-    best_rank: tuple[int, int] = (-1, -1)
+    best_rank: tuple[int, int, int] = (-1, -1, -1)
     for path in sorted(outputs_dir.glob("*manifest*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1198,16 +1240,20 @@ def _find_cached_blend_manifest(mode: str, zip_name: str) -> dict | None:
         if not zip_path.exists():
             continue
         build_strategy = str(payload.get("build_strategy", "")).strip()
-        if build_strategy != "scorer_blend" and path.name != "submission_manifest.json":
+        if build_strategy not in {"scorer_blend", "validated_repair"} and path.name != "submission_manifest.json":
             continue
         normalized = _normalize_cached_blend_manifest(path, payload, mode)
         if normalized.get("mode") != mode:
             continue
         if path.name == "submission_manifest.json" and zip_path.name != zip_name:
             normalized["zip_path"] = str(zip_path)
+        is_validated = int(
+            str(normalized.get("validation_status", "")).strip().lower() == "valid"
+            or str(normalized.get("build_strategy", "")).strip() == "validated_repair"
+        )
         has_score = int(normalized.get("known_score") not in (None, "") or normalized.get("estimated_live_score") not in (None, ""))
-        is_generic = int(path.name == "submission_manifest.json")
-        rank = (has_score, is_generic)
+        is_specific = int(path.name != "submission_manifest.json")
+        rank = (is_validated, has_score, is_specific)
         if rank > best_rank:
             best_rank = rank
             best_manifest = normalized
@@ -1216,8 +1262,14 @@ def _find_cached_blend_manifest(mode: str, zip_name: str) -> dict | None:
 
 def _load_latest_blend_manifest(manifest_path: Path, mode: str, zip_name: str) -> dict:
     best_manifest: dict | None = None
-    best_rank: tuple[int, int] = (-1, -1)
-    for path in (manifest_path, manifest_path.with_name("submission_manifest.json")):
+    best_rank: tuple[int, int, int] = (-1, -1, -1)
+    candidate_paths = [manifest_path, manifest_path.with_name("submission_manifest.json")]
+    candidate_paths.extend(
+        path
+        for path in sorted(manifest_path.parent.glob("*validated*manifest*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+        if path not in candidate_paths
+    )
+    for path in candidate_paths:
         if not path.exists():
             continue
         try:
@@ -1227,7 +1279,7 @@ def _load_latest_blend_manifest(manifest_path: Path, mode: str, zip_name: str) -
         if not isinstance(payload, dict):
             continue
         build_strategy = str(payload.get("build_strategy", "")).strip()
-        if path.name != "submission_manifest.json" and build_strategy != "scorer_blend":
+        if path.name != "submission_manifest.json" and build_strategy not in {"scorer_blend", "validated_repair"}:
             continue
         zip_path = Path(str(payload.get("zip_path", "")).strip())
         if not zip_path.exists():
@@ -1235,9 +1287,13 @@ def _load_latest_blend_manifest(manifest_path: Path, mode: str, zip_name: str) -
         normalized = _normalize_cached_blend_manifest(path, payload, mode)
         if normalized.get("mode") != mode and path.name != "submission_manifest.json":
             continue
+        is_validated = int(
+            str(normalized.get("validation_status", "")).strip().lower() == "valid"
+            or str(normalized.get("build_strategy", "")).strip() == "validated_repair"
+        )
         has_score = int(normalized.get("known_score") not in (None, "") or normalized.get("estimated_live_score") not in (None, ""))
-        is_generic = int(path.name == "submission_manifest.json")
-        rank = (has_score, is_generic)
+        is_specific = int(path.name != "submission_manifest.json")
+        rank = (is_validated, has_score, is_specific)
         if rank > best_rank:
             best_rank = rank
             best_manifest = normalized
@@ -1540,16 +1596,25 @@ def run_scorer_blend_build(zip_name: str, mode: str) -> dict:
         if cached_zip.resolve() != output_zip.resolve():
             shutil.copyfile(cached_zip, output_zip)
         manifest = dict(cached)
-        manifest["build_strategy"] = "scorer_blend"
+        manifest["build_strategy"] = str(manifest.get("build_strategy", "")).strip() or "scorer_blend"
         manifest["zip_path"] = str(output_zip)
         manifest["zip_size_bytes"] = output_zip.stat().st_size
         manifest["manifest_path"] = str(manifest_path)
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         _daemon_log(
             "build:cache-hit "
-            f"strategy=scorer_blend mode={mode} source={cached.get('_manifest_path')} zip={output_zip.name}"
+            f"strategy={manifest.get('build_strategy')} mode={mode} source={cached.get('_manifest_path')} zip={output_zip.name}"
         )
-        _write_status("building", f"Reusing cached open blend ({_blend_variant_label(mode)})", progress=0.84, extra={"variant": mode, "build_strategy": "scorer_blend"})
+        _write_status(
+            "building",
+            f"Reusing cached open blend ({_blend_variant_label(mode)})",
+            progress=0.84,
+            extra={
+                "variant": mode,
+                "build_strategy": manifest.get("build_strategy"),
+                "validation_status": manifest.get("validation_status"),
+            },
+        )
         return manifest
 
     include_sanitized = mode == "skip_known_dynamic_sanitized"

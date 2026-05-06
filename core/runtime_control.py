@@ -545,7 +545,7 @@ def save_runtime_node_operator_binding(email: str) -> dict:
     state = register_paired_operator(email)
     return {
         "ok": True,
-        "stdout": "Runtime node operator binding saved.",
+        "stdout": "Runtime node owner binding saved.",
         "stderr": "",
         "state": state,
     }

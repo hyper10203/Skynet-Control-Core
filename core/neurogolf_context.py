@@ -329,6 +329,11 @@ def _normalized_output_manifest(path: Path, payload: dict) -> dict:
             best_source_row: dict | None = None
             best_source_manifest: Path | None = None
             for source_manifest in candidate_manifests:
+                try:
+                    if source_manifest.resolve() == path.resolve():
+                        continue
+                except Exception:
+                    pass
                 source_payload = _json_or_none(source_manifest)
                 if not isinstance(source_payload, dict):
                     continue
