@@ -1,15 +1,9 @@
 {
-  "id": "cmd_20260506T065940Z_1c16222d",
+  "id": "cmd_20260506T071834Z_478bf4c3",
   "node_id": "c3e9e4b8ff0a38d4",
   "action": "run_healthcheck",
   "args": {},
-  "status": "executed",
-  "requested_at": "2026-05-06T06:59:40Z",
-  "requested_by": "remote-control-center",
-  "executed_at": "2026-05-06T07:05:51Z",
-  "result": {
-    "ok": true,
-    "stdout": "workspace_root: OK | D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\nkaggle_credentials: OK | E:\\LLM\\New project_main\\arc-agent-system\\.local\\kaggle\\kaggle.json\nollama: OK | http://localhost:11434 | 6 models visible\nremote_control_center: OK | https://axiomgraph-operations-core.streamlit.app | HTTP 200",
-    "stderr": ""
-  }
+  "status": "pending",
+  "requested_at": "2026-05-06T07:18:34Z",
+  "requested_by": "remote-control-center"
 }
