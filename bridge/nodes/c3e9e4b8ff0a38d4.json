@@ -14,13 +14,13 @@
     "cpu_percent": 0.0,
     "memory_mb": 0.4,
     "status": "running",
-    "status_updated_at": "2026-05-06T21:40:46Z",
+    "status_updated_at": "2026-05-06T21:40:58Z",
     "status_stale": false,
-    "status_age_seconds": 3.088684
+    "status_age_seconds": 10.880329
   },
-  "phase": "building",
-  "message": "Reusing cached open blend (static replacement blend)",
-  "progress": 0.84,
+  "phase": "idle",
+  "message": "Cycle complete",
+  "progress": 1.0,
   "best_completed_public_score": 4987.27,
   "latest_completed_public_score": null,
   "pending_submission_count": 0,
@@ -1126,27 +1126,27 @@
     "goal_reached": true
   },
   "latest_report": {
-    "started_at": "2026-05-06T21:14:29Z",
+    "started_at": "2026-05-06T21:40:46Z",
     "plan": {
       "target": "",
-      "variant_hint": "skip_known_dynamic_sanitized",
+      "variant_hint": "skip_known_dynamic",
       "should_submit": true,
-      "rationale": "Avoid over-reliance on a single seed family. Build minimal static-shape networks for all 400 tasks from scratch to ensure V3 compliance and avoid dynamic-shape penalties. | switched to a fresh static-build branch | auto-submit policy: candidate proxy 5269.61 clears the live submit threshold of 4988.27",
-      "submission_message": "Building fresh static-shape networks for all 400 tasks with strict V3 compliance.",
-      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Avoid over-reliance on a single seed family. Build minimal static-shape networks for all 400 tasks from scratch to ensure V3 compliance and avoid dynamic-shape penalties.\",\n  \"submission_message\": \"Building fresh static-shape networks for all 400 tasks with strict V3 compliance.\"\n}",
+      "rationale": "Build minimal static ONNX graphs for all 400 tasks using fresh construction, avoiding dynamic shapes and invalid V2-era models. | auto-submit policy: candidate proxy 5269.61 clears the live submit threshold of 4988.27",
+      "submission_message": "Constructing 400/400 V3-compliant static ONNX graphs with minimal computational cost.",
+      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using fresh construction, avoiding dynamic shapes and invalid V2-era models.\",\n  \"submission_message\": \"Constructing 400/400 V3-compliant static ONNX graphs with minimal computational cost.\"\n}",
       "team_strategy": {
-        "primary": "Example:\n[\n  \"task001\",\n  \"task002\",\n  \"task003\"\n]",
-        "secondary": "Okay, here's a list of NeuroGolf experimental directions, focusing on minimal computational graphs and static shapes, given the April 28th metric update and the need to optimize for `Score = 25 - log(MACs + memory + params)`.  These are distinct from simply preserving the seed.  I've prioritized ideas that address the constraints and potential opportunities.\n\n1. **\"Geometric Primitives\" Task-Specific Networks:** For each of the 114 invalid base tasks, attempt to construct a *tiny* network (e.g., <1000 parameters) using only geometric transformations (rotations, scaling, shearing, translations) applied to a small set of static \"primitive\" shapes (circles, squares, triangles, lines).  The network's output would be a classification of the input shape based on these transformations. This leverages known geometric properties instead of learned features.  This is risky, but high-reward if successful.\n\n2. **\"Numpy-Only\" Task Simplification:**  Identify a subset (e.g., 10) of the invalid tasks that seem fundamentally solvable with simple NumPy operations (e.g., thresholding, edge detection, basic filtering).  Attempt to create solutions that *explicit",
-        "tertiary": "Here is the suggested strategy:\n\n**Task Identification**\n\n1. Review current submissions and identify tasks that require new V3-compliant network files (not present in current packs).\n2. Analyze local manifests to find gaps in current submissions where static-shape networks must be built from scratch.\n\n**Kaggle Import Analysis**\n\n3. Evaluate Kaggle imports for V3 compliance vs invalid V2-era files.\n4. Identify which imported sources can be used as is, and which require modification or replacement.\n\n**Prior Lesson Review**\n\n5. Review prior lessons to identify patterns and insights that can inform the construction of new V3-compliant networks.\n\n**Public Seed Behavior Analysis**\n\n6. Analyze public seed behavior to understand how different seeds interact with each other and the environment.\n7. Use this understanding to inform the construction of new V3-compliant networks.\n\n**Efficiency Focus**\n\n8. Minimize MACs, memory, and params while maintaining correctness by:\n\t* Using geometric transforms instead of learned weights\n\t* Simplifying network architectures\n\t* Reducing the number of layers and nodes\n\n**Strategy Suggestions**\n\n9. Build tiny networks using simple architectures and few parameters.\n10. Leverage prior knowledge and insights to construct new V3-compliant networks that are efficient, correct, and effective",
-        "coder": "### Implementation Checklist for NeuroGolf Automation\n\n#### **1. Review Current State**\n   - **Action:** Ensure all current submissions and manifests are up-to-date.\n   - **Files/Scripts:** `submission_6285_processable_best.zip`, `manifest.json`\n   - **Automation Steps:**\n     - Verify the integrity of the submission zip file.\n     - Check for any pending updates or changes in the manifest.\n\n#### **2. Task Identification**\n   - **Action:** Identify tasks that require new V3-compliant network files.\n   - **Files/Scripts:** `manifest.json`, `task_list.txt`\n   - **Automation Steps:**\n     - Parse the manifest to extract task details.\n     - Compare with existing task files to identify gaps.\n\n#### **3. Kaggle Import Analysis**\n   - **Action:** Evaluate imported sources for V3 compliance and replace or modify as necessary.\n   - **Files/Scripts:** `kaggle_imports`, `import_analysis.py`\n   - **Automation Steps:**\n     - Run a script to analyze each import source.\n     - Replace non-compliant imports with compliant versions.\n\n#### **4. Prior Lesson Review**\n   - **Action:** Review prior lessons for patterns and insights that can inform new network construction.\n   - **Files/Scripts:** `prior_lessons`, `lesson_analysis.py`\n   - **Automation Steps:**\n     - Extract key insights from previous lessons.\n     - Document these insights in a structured format.\n\n#### **5. Public Seed Behavior Analysis**\n   - **Action:** Analyze public seed behavior to understand interactions with the environment.\n   - **Files/Scripts:** `public_seeds`, `seed_behavior_analysis.py`\n   - **Automation Steps:**\n     - Collect data on how different seeds interact.\n     - Use this data to inform new network construction.\n\n#### **6. Efficiency Focus**\n   - **Action:** Minimize MACs, memory, and params while maintaining correctness.\n   - **Files/Scripts:** `network_architectures`, `efficiency_optimizer.py`\n   - **Automation Steps:**\n     - Implement geometric transforms instead of learned weights.\n     - Simplify network architectures by reducing layers and nodes.\n\n#### **7. Candidate Experiment Branches**\n   - **Action:** Develop candidate experiment branches based on identified tasks and insights.\n   - **Files/Scripts:** `experiment_branches`, `branch_generator.py`\n   - **Automation Steps:**\n     - Generate new branch configurations for each task.\n     - Ensure compliance with V3 standards.\n\n#### **8. Likely Files to Touch**\n   - **Action:** Identify key files that need updates or creation.\n   - **Files/Scripts:** `submission_6285_processable_best.zip`, `manifest.json`, `kaggle_imports`, `prior_lessons`, `public_seeds`, `network_architectures`\n   - **Automation Steps:**\n     - List all relevant files and scripts for each step.\n     - Ensure backups before making changes.\n\n#### **9. Safe Automation Steps**\n   - **Action:** Implement safe automation steps to minimize risks.\n   - **Files/Scripts:** `automation_steps`, `risk_assessment.py`\n   - **Automation Steps:**\n     - Run automated checks before deploying any changes.\n     - Monitor for errors and revert if necessary.\n\n#### **10. Top 3 Experiments to Run Next**\n   - **Action:** Prioritize experiments based on potential",
-        "critic": "**Return the 3 biggest risks or likely mistakes:**\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Submission Scored Output Sets\" (e.g., `submission_scored_output_sets_400`) for Multiple Tasks**\n\n**Critique:**  \nThe strategy bundle is heavily dependent on replacing or augmenting the base solution with the same `submission_scored_output_sets_400` kernel for **over 20 tasks** (e.g., `task066`, `task080`, `task091`, etc.). This is a **repetitive and risky assumption** \u2014 it assumes that the same kernel can be applied to a wide variety of tasks, which is **unlikely** unless those tasks are **structurally identical** or **highly similar**. \n\n**Why it's risky:**  \n- It suggests a lack of **task-specific adaptation**.  \n- It may lead to **overfitting** on the `submission_scored_output_sets_400` kernel, which may not generalize well."
+        "primary": "1. **Revalidate and Refine Existing Seed Tasks**  \n   Focus on the 400 tasks in the current submission zip. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated references. Revalidate each task using the local scorer, keeping only those that pass V3 compliance (no dynamic shapes, minimal MACs, correct constants). Replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**  \n   Use the `imported_magmacot_5550_neurogolf_logic_driven_ensemble` and `latest_konbu_5344` as teacher models to generate small, static ONNX graphs for high-value tasks (e.g., `task076`, `task133`, `task188`). Use ONNX-MLIR or PyTorch-ONNX tools to compile these into minimal computational graphs with fixed shapes and no symbolic dimensions. Validate each distilled model against the",
+        "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focusing on static shapes, minimal computational graphs, and avoiding the pitfalls of the previous dynamic-shape exploits, given the April 28th metric update and the V3 optimization goals.  These are distinct from simple seed preservation.\n\n1.  **\"Task-Specific Static Filters\":** Identify the 114 invalid base tasks.  For *each* of these, design a *single*, very small (e.g., <1000 parameters) static-shape network (e.g., a simple convolutional filter, a few fully connected layers) specifically to address the *unique* challenge of that task.  The goal isn't to perfectly solve it, but to generate a *valid* output that contributes *something* to the overall score and avoids invalidation.  This prioritizes getting *any* score on those tasks.  Focus on tasks with relatively simple geometric or logical structures.\n\n2.  **\"Geometric Primitives Ensemble\":** Instead of complex networks, build a suite of small networks that each implement a *geometric primitive* transformation (e.g., rotation, scaling, translation, simple blurring).  Combine the outputs of these networks using a learned (but *tiny*,",
+        "tertiary": "Based on the provided information, I've identified the tasks that need new V3-compliant network files and suggested strategies to build missing V3 files while focusing on efficiency.\n\n**Tasks requiring new V3-compliant network files:**\n\n1. **task004**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n2. **task012**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n3. **task015**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n4. ...and so on, for the remaining 397 tasks in the \"invalid_base_tasks\" list.\n\n**Gaps in current submissions:**\n\n1. **task066**: Replaced with \"submission_scored_output_sets_400\", but not V3-compliant. Build a new V3-compliant network from scratch.\n2. **task076**: Replaced with \"imported_magmacot_5550_neurogolf_logic_driven_ensemble\", but not V3-compliant. Build a new V3-compliant network from scratch.\n...and so on, for the remaining replaced tasks.\n\n**Strategies to build missing V3 files:**\n\n1. **Geometric",
+        "coder": "### Candidate Experiment Branches\n\n1. **Revalidate and Refine Existing Seed Tasks**\n   - Focus on the 400 tasks in the current submission zip.\n   - Use `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated references.\n   - Revalidate each task using the local scorer, keeping only those that pass V3 compliance (no dynamic shapes, minimal MACs, correct constants).\n   - Replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**\n   - Use `imported_magmacot_5550_neurogolf_logic_driven_ensemble` and `latest_konbu_5344` as teacher models.\n   - Generate small, static ONNX graphs for high-value tasks (e.g., `task076`, `task133`, `task188`).\n   - Use ONNX-MLIR or PyTorch-ONNX tools to compile these into minimal computational graphs with fixed shapes and no symbolic dimensions.\n   - Validate each distilled model against the local scorer.\n\n3. **Task-Specific Static Filters**\n   - Identify the 114 invalid base tasks.\n   - Design a single, very small (e.g., <1000 parameters) static-shape network for each task to address unique challenges.\n   - Focus on tasks with relatively simple geometric or logical structures.\n\n4. **Geometric Primitives Ensemble**\n   - Build a suite of small networks that implement geometric primitive transformations (e.g., rotation, scaling, translation, simple blurring).\n   - Combine the outputs of these networks using a learned (but tiny) ensemble model.\n   - Validate the ensemble against the local scorer.\n\n5. **Build Missing V3 Files**\n   - For tasks requiring new V3-compliant network files (e.g., `task004`, `task012`, etc.), build from scratch.\n   - Ensure each new file is V3-compliant and passes validation.\n\n### Likely Files/Scripts to Touch\n\n- **Revalidate and Refine Existing Seed Tasks**\n  - `revalidate_tasks.py`\n  - `refine_seed_tasks.py`\n\n- **Distill Big Models into Static ONNX Graphs**\n  - `distill_models.py`\n  - `compile_onnx_graphs.py`\n\n- **Task-Specific Static Filters**\n  - `design_task_specific_filters.py`\n  - `train_task_specific_filters.py`\n\n- **Geometric Primitives Ensemble**\n  - `build_geometric_primitives.py`\n  - `ensemble_model_training.py`\n\n- **Build Missing V3 Files**\n  - `generate_v3_files.py`\n  - `validate_new_files.py`\n\n### Safe Automation Steps\n\n1. **Revalidate and Refine Existing Seed Tasks**\n   - Run the `revalidate_tasks.py` script to revalidate all tasks.\n   - Use the `refine_seed_tasks.py` script to replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**\n   - Execute the `distill_models.py` script to generate distilled models for high-value tasks.\n   - Run the `compile_onnx_graphs.py` script to compile these models into static ONNX graphs.\n\n3. **Task-Specific Static Filters**\n   -",
+        "critic": "The NeuroGolf strategy bundle you've presented is **riddled with risky assumptions, repetitive experiment choices, and a lack of strategic focus**. Here are the **3 biggest risks or likely mistakes** in this approach:\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Replaced\" Tasks Without V3 Compliance**\n\n**Issue:**  \nThe strategy assumes that replacing tasks with other submissions (e.g., `submission_scored_output_sets_400`, `imported_magmacot_5550`, etc.) automatically ensures V3 compliance. This is a **critical flaw**. The `replaced_count` is 30, but **none of these replacements are validated as V3-compliant**. The system is still using **V2-era models** that are now invalid due to the April 28th metric update.\n\n**Why It's a Mistake:**  \nYou're **relying on unverified, potentially invalid models** to score points. This is a **high-risk gamble** that could lead to **zero score on those tasks"
       },
       "action": "scorer_blend_build",
-      "mode": "skip_known_dynamic_sanitized",
+      "mode": "skip_known_dynamic",
       "seed_label": ""
     },
     "best_completed_public_score": 4987.27,
-    "pending_submission_count": 7,
+    "pending_submission_count": 0,
     "campaign_progress": {
       "submission_mode": "submit_any_public_gain",
       "minimum_public_gain_to_submit": 1.0,
@@ -1157,13 +1157,14 @@
     },
     "learning": {
       "branch_counts": {
-        "scorer_blend_build|-|skip_known_dynamic": 49,
+        "scorer_blend_build|-|skip_known_dynamic_sanitized": 1,
+        "scorer_blend_build|-|skip_known_dynamic": 48,
         "scorer_blend_build|-|strict_known": 1
       },
       "blocked_branches": [],
       "recent_streak": {
-        "key": "scorer_blend_build|-|skip_known_dynamic",
-        "count": 25
+        "key": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+        "count": 1
       },
       "submitted_fingerprints": [
         "42ff99a8a3a93387"
@@ -1171,12 +1172,11 @@
       "seen_candidate_signatures": [
         "0e28a5768a8242a2",
         "227014d142a4b92e",
+        "514651321de23c1f",
         "a631816ebe298d7d",
         "de58843905e0792b"
       ],
-      "recommendations": [
-        "Break the repeated branch streak: scorer_blend_build|-|skip_known_dynamic appeared 25 times in a row."
-      ]
+      "recommendations": []
     },
     "build_manifest": {
       "files": 400,
@@ -12151,38 +12151,622 @@
       "median_gap_per_file": 0.267646,
       "median_abs_gap": 98.225905,
       "build_strategy": "scorer_blend",
-      "mode": "skip_known_dynamic_sanitized",
-      "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_manifest.json",
+      "mode": "skip_known_dynamic",
+      "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomy_cache_smoke3_manifest.json",
       "manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_manifest.json"
     },
-    "experiment_fingerprint": "3e4dcf537139f778",
-    "candidate_signature": "514651321de23c1f",
+    "experiment_fingerprint": "d0b97b32132a9e77",
+    "candidate_signature": "de58843905e0792b",
     "submit_result": {
       "submitted": false,
-      "reason": "pending submission cap reached"
+      "reason": "V3_VALIDATION_FAILED: 40 task files failed ONNX validation",
+      "v3_validation": {
+        "valid": false,
+        "reason": "40 task files failed ONNX validation",
+        "invalid_tasks": [
+          "task014.onnx",
+          "task018.onnx",
+          "task019.onnx",
+          "task020.onnx",
+          "task030.onnx",
+          "task031.onnx",
+          "task036.onnx",
+          "task049.onnx",
+          "task065.onnx",
+          "task091.onnx",
+          "task150.onnx",
+          "task153.onnx",
+          "task155.onnx",
+          "task158.onnx",
+          "task177.onnx",
+          "task184.onnx",
+          "task223.onnx",
+          "task247.onnx",
+          "task249.onnx",
+          "task265.onnx",
+          "task268.onnx",
+          "task269.onnx",
+          "task280.onnx",
+          "task284.onnx",
+          "task286.onnx",
+          "task296.onnx",
+          "task300.onnx",
+          "task304.onnx",
+          "task307.onnx",
+          "task310.onnx",
+          "task315.onnx",
+          "task328.onnx",
+          "task339.onnx",
+          "task349.onnx",
+          "task351.onnx",
+          "task358.onnx",
+          "task364.onnx",
+          "task370.onnx",
+          "task383.onnx",
+          "task384.onnx"
+        ],
+        "dynamic_tasks": [],
+        "missing_tasks": [],
+        "validation_report_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_v3_validation.json",
+        "zip_validation": {
+          "zip_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous.zip",
+          "valid": false,
+          "errors": [
+            "40 task files failed ONNX validation"
+          ],
+          "warnings": [],
+          "files": 400,
+          "valid_files": 360,
+          "invalid_files": 40,
+          "missing_tasks": [],
+          "unexpected_files": [],
+          "invalid_task_reports": [
+            {
+              "name": "task014.onnx",
+              "archive_member": "task014.onnx",
+              "errors": [
+                "cr_x[0] has symbolic dimension 'unk__0'",
+                "cr_x[1] has symbolic dimension 'unk__1'",
+                "cr_x[2] has symbolic dimension 'unk__2'",
+                "cr_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 2835,
+              "op_count": 52
+            },
+            {
+              "name": "task018.onnx",
+              "archive_member": "task018.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "v16[0] has symbolic dimension 'unk__1'",
+                "v17[0] has symbolic dimension 'unk__1'",
+                "v18[0] has symbolic dimension 'unk__1'",
+                "v19[0] has symbolic dimension 'unk__1'",
+                "v20[0] has symbolic dimension 'unk__1'",
+                "v21[0] has symbolic dimension 'unk__1'",
+                "v22[0] has symbolic dimension 'unk__1'"
+              ],
+              "size_bytes": 28788,
+              "op_count": 27
+            },
+            {
+              "name": "task019.onnx",
+              "archive_member": "task019.onnx",
+              "errors": [
+                "scal_shape[0] has non-positive dimension 0"
+              ],
+              "size_bytes": 4742,
+              "op_count": 77
+            },
+            {
+              "name": "task020.onnx",
+              "archive_member": "task020.onnx",
+              "errors": [
+                "profile failed: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()"
+              ],
+              "size_bytes": 8265,
+              "op_count": 143
+            },
+            {
+              "name": "task030.onnx",
+              "archive_member": "task030.onnx",
+              "errors": [
+                "ar_m2_sliced[0] has symbolic dimension 'unk__0'",
+                "ar_m2_sliced[1] has symbolic dimension 'unk__1'",
+                "ar_m2_sliced[2] has symbolic dimension 'unk__2'",
+                "ar_m2_sliced[3] has symbolic dimension 'unk__3'",
+                "ar_m2_shifted[0] has symbolic dimension 'unk__4'",
+                "ar_m2_shifted[1] has symbolic dimension 'unk__5'",
+                "ar_m2_shifted[2] has symbolic dimension 'unk__6'",
+                "ar_m2_shifted[3] has symbolic dimension 'unk__7'"
+              ],
+              "size_bytes": 5745,
+              "op_count": 92
+            },
+            {
+              "name": "task031.onnx",
+              "archive_member": "task031.onnx",
+              "errors": [
+                "nz_x[0] has symbolic dimension 'unk__0'",
+                "nz_x[1] has symbolic dimension 'unk__1'",
+                "nz_x[2] has symbolic dimension 'unk__2'",
+                "nz_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 1982,
+              "op_count": 34
+            },
+            {
+              "name": "task036.onnx",
+              "archive_member": "task036.onnx",
+              "errors": [
+                "abc_x[0] has symbolic dimension 'unk__0'",
+                "abc_x[1] has symbolic dimension 'unk__1'",
+                "abc_x[2] has symbolic dimension 'unk__2'",
+                "abc_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 3416,
+              "op_count": 63
+            },
+            {
+              "name": "task049.onnx",
+              "archive_member": "task049.onnx",
+              "errors": [
+                "cr_x[0] has symbolic dimension 'unk__0'",
+                "cr_x[1] has symbolic dimension 'unk__1'",
+                "cr_x[2] has symbolic dimension 'unk__2'",
+                "cr_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 2835,
+              "op_count": 52
+            },
+            {
+              "name": "task065.onnx",
+              "archive_member": "task065.onnx",
+              "errors": [
+                "Q0[0] has symbolic dimension 'unk__0'",
+                "Q0[1] has symbolic dimension 'unk__1'",
+                "Q0[2] has symbolic dimension 'unk__2'",
+                "Q0[3] has symbolic dimension 'unk__3'",
+                "Q1[0] has symbolic dimension 'unk__4'",
+                "Q1[1] has symbolic dimension 'unk__5'",
+                "Q1[2] has symbolic dimension 'unk__6'",
+                "Q1[3] has symbolic dimension 'unk__7'"
+              ],
+              "size_bytes": 3326,
+              "op_count": 68
+            },
+            {
+              "name": "task091.onnx",
+              "archive_member": "task091.onnx",
+              "errors": [
+                "crop5_crop_0[0] has symbolic dimension 'unk__0'",
+                "crop5_crop_0[1] has symbolic dimension 'unk__1'",
+                "crop5_crop_0[2] has symbolic dimension 'unk__2'",
+                "crop5_crop_0[3] has symbolic dimension 'unk__3'",
+                "crop5_zero_right_0[0] has symbolic dimension 'unk__4'",
+                "crop5_zero_right_0[1] has symbolic dimension 'unk__5'",
+                "crop5_zero_right_0[2] has symbolic dimension 'unk__6'",
+                "crop5_zero_right_0[3] has symbolic dimension 'unk__7'"
+              ],
+              "size_bytes": 42211,
+              "op_count": 35
+            },
+            {
+              "name": "task150.onnx",
+              "archive_member": "task150.onnx",
+              "errors": [
+                "rev[0] has symbolic dimension 'unk__0'",
+                "rev[1] has symbolic dimension 'unk__1'",
+                "rev[2] has symbolic dimension 'unk__2'",
+                "rev[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 1850,
+              "op_count": 27
+            },
+            {
+              "name": "task153.onnx",
+              "archive_member": "task153.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "ch1_1[0] has symbolic dimension 'unk__0'",
+                "cv1_2[0] has symbolic dimension 'unk__0'",
+                "mx1_3[0] has symbolic dimension 'unk__0'",
+                "ar1_4[0] has symbolic dimension 'unk__0'",
+                "oe1_5[0] has symbolic dimension 'unk__0'",
+                "ae1_6[0] has symbolic dimension 'unk__0'",
+                "ok1_7[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 377910,
+              "op_count": 3848
+            },
+            {
+              "name": "task155.onnx",
+              "archive_member": "task155.onnx",
+              "errors": [
+                "rev[0] has symbolic dimension 'unk__0'",
+                "rev[1] has symbolic dimension 'unk__1'",
+                "rev[2] has symbolic dimension 'unk__2'",
+                "rev[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 1903,
+              "op_count": 28
+            },
+            {
+              "name": "task158.onnx",
+              "archive_member": "task158.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "counts[0] has symbolic dimension 'unk__0'",
+                "bg_idx[0] has symbolic dimension 'unk__0'",
+                "bg_oh_b[0] has symbolic dimension 'unk__0'",
+                "bg_oh[0] has symbolic dimension 'unk__0'",
+                "X_bg[0] has symbolic dimension 'unk__0'",
+                "Bg[0] has symbolic dimension 'unk__0'",
+                "Wcnt[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 76927,
+              "op_count": 1043
+            },
+            {
+              "name": "task177.onnx",
+              "archive_member": "task177.onnx",
+              "errors": [
+                "cropped[0] has symbolic dimension 'unk__0'",
+                "cropped[1] has symbolic dimension 'unk__1'",
+                "cropped[2] has symbolic dimension 'unk__2'",
+                "cropped[3] has symbolic dimension 'unk__3'",
+                "pad_right[0] has symbolic dimension 'unk__4'",
+                "pad_right[1] has symbolic dimension 'unk__5'",
+                "pad_right[2] has symbolic dimension 'unk__6'",
+                "pad_right[3] has symbolic dimension 'unk__7'"
+              ],
+              "size_bytes": 2579,
+              "op_count": 46
+            },
+            {
+              "name": "task184.onnx",
+              "archive_member": "task184.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "any_hot[0] has symbolic dimension 'unk__0'",
+                "bg_channel[0] has symbolic dimension 'unk__0'",
+                "non_bg[0] has symbolic dimension 'unk__0'",
+                "row_content_count[0] has symbolic dimension 'unk__0'",
+                "row_nonbg_count[0] has symbolic dimension 'unk__0'",
+                "col_content_count[0] has symbolic dimension 'unk__0'",
+                "col_nonbg_count[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 5966,
+              "op_count": 102
+            },
+            {
+              "name": "task223.onnx",
+              "archive_member": "task223.onnx",
+              "errors": [
+                "rsz_roi[0] has non-positive dimension 0",
+                "rsz_scales[0] has non-positive dimension 0"
+              ],
+              "size_bytes": 825,
+              "op_count": 10
+            },
+            {
+              "name": "task247.onnx",
+              "archive_member": "task247.onnx",
+              "errors": [
+                "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+              ],
+              "size_bytes": 2614,
+              "op_count": null
+            },
+            {
+              "name": "task249.onnx",
+              "archive_member": "task249.onnx",
+              "errors": [
+                "content[0] has symbolic dimension 'unk__0'",
+                "content[1] has symbolic dimension 'unk__1'",
+                "content[2] has symbolic dimension 'unk__2'",
+                "content[3] has symbolic dimension 'unk__3'",
+                "full[0] has symbolic dimension 'unk__0'",
+                "full[1] has symbolic dimension 'unk__1'",
+                "full[2] has symbolic dimension 'unk__2'",
+                "full[3] has symbolic dimension 'unk__4'"
+              ],
+              "size_bytes": 2187,
+              "op_count": 36
+            },
+            {
+              "name": "task265.onnx",
+              "archive_member": "task265.onnx",
+              "errors": [
+                "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+              ],
+              "size_bytes": 3496,
+              "op_count": null
+            },
+            {
+              "name": "task268.onnx",
+              "archive_member": "task268.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "fg_1[0] has symbolic dimension 'unk__0'",
+                "obj_f_2[0] has symbolic dimension 'unk__0'",
+                "obj_3[0] has symbolic dimension 'unk__0'",
+                "ch0_4[0] has symbolic dimension 'unk__0'",
+                "bg_5[0] has symbolic dimension 'unk__0'",
+                "row_vals_6[0] has symbolic dimension 'unk__0'",
+                "col_vals_7[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 11063,
+              "op_count": 182
+            },
+            {
+              "name": "task269.onnx",
+              "archive_member": "task269.onnx",
+              "errors": [
+                "v18[0] has symbolic dimension 'unk__0'",
+                "v18[1] has symbolic dimension 'unk__1'",
+                "v18[2] has symbolic dimension 'unk__2'",
+                "v18[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 958,
+              "op_count": 11
+            },
+            {
+              "name": "task280.onnx",
+              "archive_member": "task280.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "v292[0] has symbolic dimension 'unk__1'",
+                "v293[0] has symbolic dimension 'unk__1'",
+                "v294[0] has symbolic dimension 'unk__1'",
+                "v295[0] has symbolic dimension 'unk__1'",
+                "v296[0] has symbolic dimension 'unk__1'",
+                "v297[0] has symbolic dimension 'unk__1'",
+                "v298[0] has symbolic dimension 'unk__1'"
+              ],
+              "size_bytes": 14240,
+              "op_count": 237
+            },
+            {
+              "name": "task284.onnx",
+              "archive_member": "task284.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "v13[0] has symbolic dimension 'unk__0'",
+                "v14[0] has symbolic dimension 'unk__0'",
+                "v15[0] has symbolic dimension 'unk__0'",
+                "v16[0] has symbolic dimension 'unk__0'",
+                "v17[0] has symbolic dimension 'unk__0'",
+                "v18[0] has symbolic dimension 'unk__0'",
+                "v19[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 5774,
+              "op_count": 164
+            },
+            {
+              "name": "task286.onnx",
+              "archive_member": "task286.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "v13[0] has symbolic dimension 'unk__1'",
+                "v14[0] has symbolic dimension 'unk__1'",
+                "v15[0] has symbolic dimension 'unk__1'",
+                "v16[0] has symbolic dimension 'unk__1'",
+                "v17[0] has symbolic dimension 'unk__1'",
+                "v18[0] has symbolic dimension 'unk__1'",
+                "v19[0] has symbolic dimension 'unk__1'"
+              ],
+              "size_bytes": 14066,
+              "op_count": 146
+            },
+            {
+              "name": "task296.onnx",
+              "archive_member": "task296.onnx",
+              "errors": [
+                "profile failed: 'list' object has no attribute 'reshape'"
+              ],
+              "size_bytes": 1314,
+              "op_count": 16
+            },
+            {
+              "name": "task300.onnx",
+              "archive_member": "task300.onnx",
+              "errors": [
+                "cr_x[0] has symbolic dimension 'unk__0'",
+                "cr_x[1] has symbolic dimension 'unk__1'",
+                "cr_x[2] has symbolic dimension 'unk__2'",
+                "cr_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 2476,
+              "op_count": 43
+            },
+            {
+              "name": "task304.onnx",
+              "archive_member": "task304.onnx",
+              "errors": [
+                "fd_roi[0] has non-positive dimension 0",
+                "fd_scales[0] has non-positive dimension 0"
+              ],
+              "size_bytes": 1581,
+              "op_count": 24
+            },
+            {
+              "name": "task307.onnx",
+              "archive_member": "task307.onnx",
+              "errors": [
+                "content[0] has symbolic dimension 'unk__0'",
+                "content[1] has symbolic dimension 'unk__1'",
+                "content[2] has symbolic dimension 'unk__2'",
+                "content[3] has symbolic dimension 'unk__3'",
+                "vu_roi[0] has non-positive dimension 0",
+                "upscaled[0] has symbolic dimension 'unk__4'",
+                "upscaled[1] has symbolic dimension 'unk__5'",
+                "upscaled[2] has symbolic dimension 'unk__6'"
+              ],
+              "size_bytes": 2326,
+              "op_count": 39
+            },
+            {
+              "name": "task310.onnx",
+              "archive_member": "task310.onnx",
+              "errors": [
+                "cr_x[0] has symbolic dimension 'unk__0'",
+                "cr_x[1] has symbolic dimension 'unk__1'",
+                "cr_x[2] has symbolic dimension 'unk__2'",
+                "cr_x[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 2835,
+              "op_count": 52
+            },
+            {
+              "name": "task315.onnx",
+              "archive_member": "task315.onnx",
+              "errors": [
+                "fs_roi[0] has non-positive dimension 0",
+                "fs_scales[0] has non-positive dimension 0"
+              ],
+              "size_bytes": 1201,
+              "op_count": 17
+            },
+            {
+              "name": "task328.onnx",
+              "archive_member": "task328.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 35416,
+              "op_count": 140
+            },
+            {
+              "name": "task339.onnx",
+              "archive_member": "task339.onnx",
+              "errors": [
+                "v21[0] has symbolic dimension 'unk__0'",
+                "v21[1] has symbolic dimension 'unk__1'",
+                "v21[2] has symbolic dimension 'unk__2'",
+                "v21[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 1098,
+              "op_count": 12
+            },
+            {
+              "name": "task349.onnx",
+              "archive_member": "task349.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 8768,
+              "op_count": 103
+            },
+            {
+              "name": "task351.onnx",
+              "archive_member": "task351.onnx",
+              "errors": [
+                "v22[0] has symbolic dimension 'unk__0'",
+                "v22[1] has symbolic dimension 'unk__1'",
+                "v22[2] has symbolic dimension 'unk__2'",
+                "v22[3] has symbolic dimension 'unk__3'"
+              ],
+              "size_bytes": 1256,
+              "op_count": 17
+            },
+            {
+              "name": "task358.onnx",
+              "archive_member": "task358.onnx",
+              "errors": [
+                "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Conv, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Sub, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Concat, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+              ],
+              "size_bytes": 7990,
+              "op_count": null
+            },
+            {
+              "name": "task364.onnx",
+              "archive_member": "task364.onnx",
+              "errors": [
+                "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+              ],
+              "size_bytes": 11071,
+              "op_count": null
+            },
+            {
+              "name": "task370.onnx",
+              "archive_member": "task370.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "zero_mask[0] has symbolic dimension 'unk__0'",
+                "valid_mask[0] has symbolic dimension 'unk__0'",
+                "color_counts[0] has symbolic dimension 'unk__0'",
+                "singleton_bool[0] has symbolic dimension 'unk__0'",
+                "singleton_float[0] has symbolic dimension 'unk__0'",
+                "singleton_nonzero_out[0] has symbolic dimension 'unk__0'",
+                "marker_out[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 31545,
+              "op_count": 342
+            },
+            {
+              "name": "task383.onnx",
+              "archive_member": "task383.onnx",
+              "errors": [
+                "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                "fg_1[0] has symbolic dimension 'unk__0'",
+                "fg_sum_2[0] has symbolic dimension 'unk__0'",
+                "fg_3[0] has symbolic dimension 'unk__0'",
+                "row_min_vals_4[0] has symbolic dimension 'unk__0'",
+                "y0_5[0] has symbolic dimension 'unk__0'",
+                "col_min_vals_6[0] has symbolic dimension 'unk__0'",
+                "x0_7[0] has symbolic dimension 'unk__0'"
+              ],
+              "size_bytes": 16059,
+              "op_count": 273
+            },
+            {
+              "name": "task384.onnx",
+              "archive_member": "task384.onnx",
+              "errors": [
+                "ch4_sliced[0] has symbolic dimension 'unk__0'",
+                "ch4_sliced[1] has symbolic dimension 'unk__1'",
+                "ch4_sliced[2] has symbolic dimension 'unk__2'",
+                "ch4_sliced[3] has symbolic dimension 'unk__3'",
+                "bbox_sliced[0] has symbolic dimension 'unk__4'",
+                "bbox_sliced[1] has symbolic dimension 'unk__5'",
+                "bbox_sliced[2] has symbolic dimension 'unk__6'",
+                "bbox_sliced[3] has symbolic dimension 'unk__7'"
+              ],
+              "size_bytes": 3216,
+              "op_count": 48
+            }
+          ],
+          "score_estimate": {
+            "profiled_files": 360,
+            "total_points": 4683.476409520295,
+            "avg_points": 13.009656693111932
+          }
+        }
+      }
     },
     "attempts": [
       {
         "attempt": 1,
         "plan": {
           "target": "",
-          "variant_hint": "skip_known_dynamic_sanitized",
+          "variant_hint": "skip_known_dynamic",
           "should_submit": true,
-          "rationale": "Avoid over-reliance on a single seed family. Build minimal static-shape networks for all 400 tasks from scratch to ensure V3 compliance and avoid dynamic-shape penalties. | switched to a fresh static-build branch | auto-submit policy: candidate proxy 5269.61 clears the live submit threshold of 4988.27",
-          "submission_message": "Building fresh static-shape networks for all 400 tasks with strict V3 compliance.",
-          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Avoid over-reliance on a single seed family. Build minimal static-shape networks for all 400 tasks from scratch to ensure V3 compliance and avoid dynamic-shape penalties.\",\n  \"submission_message\": \"Building fresh static-shape networks for all 400 tasks with strict V3 compliance.\"\n}",
+          "rationale": "Build minimal static ONNX graphs for all 400 tasks using fresh construction, avoiding dynamic shapes and invalid V2-era models. | auto-submit policy: candidate proxy 5269.61 clears the live submit threshold of 4988.27",
+          "submission_message": "Constructing 400/400 V3-compliant static ONNX graphs with minimal computational cost.",
+          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using fresh construction, avoiding dynamic shapes and invalid V2-era models.\",\n  \"submission_message\": \"Constructing 400/400 V3-compliant static ONNX graphs with minimal computational cost.\"\n}",
           "team_strategy": {
-            "primary": "Example:\n[\n  \"task001\",\n  \"task002\",\n  \"task003\"\n]",
-            "secondary": "Okay, here's a list of NeuroGolf experimental directions, focusing on minimal computational graphs and static shapes, given the April 28th metric update and the need to optimize for `Score = 25 - log(MACs + memory + params)`.  These are distinct from simply preserving the seed.  I've prioritized ideas that address the constraints and potential opportunities.\n\n1. **\"Geometric Primitives\" Task-Specific Networks:** For each of the 114 invalid base tasks, attempt to construct a *tiny* network (e.g., <1000 parameters) using only geometric transformations (rotations, scaling, shearing, translations) applied to a small set of static \"primitive\" shapes (circles, squares, triangles, lines).  The network's output would be a classification of the input shape based on these transformations. This leverages known geometric properties instead of learned features.  This is risky, but high-reward if successful.\n\n2. **\"Numpy-Only\" Task Simplification:**  Identify a subset (e.g., 10) of the invalid tasks that seem fundamentally solvable with simple NumPy operations (e.g., thresholding, edge detection, basic filtering).  Attempt to create solutions that *explicit",
-            "tertiary": "Here is the suggested strategy:\n\n**Task Identification**\n\n1. Review current submissions and identify tasks that require new V3-compliant network files (not present in current packs).\n2. Analyze local manifests to find gaps in current submissions where static-shape networks must be built from scratch.\n\n**Kaggle Import Analysis**\n\n3. Evaluate Kaggle imports for V3 compliance vs invalid V2-era files.\n4. Identify which imported sources can be used as is, and which require modification or replacement.\n\n**Prior Lesson Review**\n\n5. Review prior lessons to identify patterns and insights that can inform the construction of new V3-compliant networks.\n\n**Public Seed Behavior Analysis**\n\n6. Analyze public seed behavior to understand how different seeds interact with each other and the environment.\n7. Use this understanding to inform the construction of new V3-compliant networks.\n\n**Efficiency Focus**\n\n8. Minimize MACs, memory, and params while maintaining correctness by:\n\t* Using geometric transforms instead of learned weights\n\t* Simplifying network architectures\n\t* Reducing the number of layers and nodes\n\n**Strategy Suggestions**\n\n9. Build tiny networks using simple architectures and few parameters.\n10. Leverage prior knowledge and insights to construct new V3-compliant networks that are efficient, correct, and effective",
-            "coder": "### Implementation Checklist for NeuroGolf Automation\n\n#### **1. Review Current State**\n   - **Action:** Ensure all current submissions and manifests are up-to-date.\n   - **Files/Scripts:** `submission_6285_processable_best.zip`, `manifest.json`\n   - **Automation Steps:**\n     - Verify the integrity of the submission zip file.\n     - Check for any pending updates or changes in the manifest.\n\n#### **2. Task Identification**\n   - **Action:** Identify tasks that require new V3-compliant network files.\n   - **Files/Scripts:** `manifest.json`, `task_list.txt`\n   - **Automation Steps:**\n     - Parse the manifest to extract task details.\n     - Compare with existing task files to identify gaps.\n\n#### **3. Kaggle Import Analysis**\n   - **Action:** Evaluate imported sources for V3 compliance and replace or modify as necessary.\n   - **Files/Scripts:** `kaggle_imports`, `import_analysis.py`\n   - **Automation Steps:**\n     - Run a script to analyze each import source.\n     - Replace non-compliant imports with compliant versions.\n\n#### **4. Prior Lesson Review**\n   - **Action:** Review prior lessons for patterns and insights that can inform new network construction.\n   - **Files/Scripts:** `prior_lessons`, `lesson_analysis.py`\n   - **Automation Steps:**\n     - Extract key insights from previous lessons.\n     - Document these insights in a structured format.\n\n#### **5. Public Seed Behavior Analysis**\n   - **Action:** Analyze public seed behavior to understand interactions with the environment.\n   - **Files/Scripts:** `public_seeds`, `seed_behavior_analysis.py`\n   - **Automation Steps:**\n     - Collect data on how different seeds interact.\n     - Use this data to inform new network construction.\n\n#### **6. Efficiency Focus**\n   - **Action:** Minimize MACs, memory, and params while maintaining correctness.\n   - **Files/Scripts:** `network_architectures`, `efficiency_optimizer.py`\n   - **Automation Steps:**\n     - Implement geometric transforms instead of learned weights.\n     - Simplify network architectures by reducing layers and nodes.\n\n#### **7. Candidate Experiment Branches**\n   - **Action:** Develop candidate experiment branches based on identified tasks and insights.\n   - **Files/Scripts:** `experiment_branches`, `branch_generator.py`\n   - **Automation Steps:**\n     - Generate new branch configurations for each task.\n     - Ensure compliance with V3 standards.\n\n#### **8. Likely Files to Touch**\n   - **Action:** Identify key files that need updates or creation.\n   - **Files/Scripts:** `submission_6285_processable_best.zip`, `manifest.json`, `kaggle_imports`, `prior_lessons`, `public_seeds`, `network_architectures`\n   - **Automation Steps:**\n     - List all relevant files and scripts for each step.\n     - Ensure backups before making changes.\n\n#### **9. Safe Automation Steps**\n   - **Action:** Implement safe automation steps to minimize risks.\n   - **Files/Scripts:** `automation_steps`, `risk_assessment.py`\n   - **Automation Steps:**\n     - Run automated checks before deploying any changes.\n     - Monitor for errors and revert if necessary.\n\n#### **10. Top 3 Experiments to Run Next**\n   - **Action:** Prioritize experiments based on potential",
-            "critic": "**Return the 3 biggest risks or likely mistakes:**\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Submission Scored Output Sets\" (e.g., `submission_scored_output_sets_400`) for Multiple Tasks**\n\n**Critique:**  \nThe strategy bundle is heavily dependent on replacing or augmenting the base solution with the same `submission_scored_output_sets_400` kernel for **over 20 tasks** (e.g., `task066`, `task080`, `task091`, etc.). This is a **repetitive and risky assumption** \u2014 it assumes that the same kernel can be applied to a wide variety of tasks, which is **unlikely** unless those tasks are **structurally identical** or **highly similar**. \n\n**Why it's risky:**  \n- It suggests a lack of **task-specific adaptation**.  \n- It may lead to **overfitting** on the `submission_scored_output_sets_400` kernel, which may not generalize well."
+            "primary": "1. **Revalidate and Refine Existing Seed Tasks**  \n   Focus on the 400 tasks in the current submission zip. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated references. Revalidate each task using the local scorer, keeping only those that pass V3 compliance (no dynamic shapes, minimal MACs, correct constants). Replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**  \n   Use the `imported_magmacot_5550_neurogolf_logic_driven_ensemble` and `latest_konbu_5344` as teacher models to generate small, static ONNX graphs for high-value tasks (e.g., `task076`, `task133`, `task188`). Use ONNX-MLIR or PyTorch-ONNX tools to compile these into minimal computational graphs with fixed shapes and no symbolic dimensions. Validate each distilled model against the",
+            "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focusing on static shapes, minimal computational graphs, and avoiding the pitfalls of the previous dynamic-shape exploits, given the April 28th metric update and the V3 optimization goals.  These are distinct from simple seed preservation.\n\n1.  **\"Task-Specific Static Filters\":** Identify the 114 invalid base tasks.  For *each* of these, design a *single*, very small (e.g., <1000 parameters) static-shape network (e.g., a simple convolutional filter, a few fully connected layers) specifically to address the *unique* challenge of that task.  The goal isn't to perfectly solve it, but to generate a *valid* output that contributes *something* to the overall score and avoids invalidation.  This prioritizes getting *any* score on those tasks.  Focus on tasks with relatively simple geometric or logical structures.\n\n2.  **\"Geometric Primitives Ensemble\":** Instead of complex networks, build a suite of small networks that each implement a *geometric primitive* transformation (e.g., rotation, scaling, translation, simple blurring).  Combine the outputs of these networks using a learned (but *tiny*,",
+            "tertiary": "Based on the provided information, I've identified the tasks that need new V3-compliant network files and suggested strategies to build missing V3 files while focusing on efficiency.\n\n**Tasks requiring new V3-compliant network files:**\n\n1. **task004**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n2. **task012**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n3. **task015**: Currently invalid (V2-era file). Build a new V3-compliant network from scratch.\n4. ...and so on, for the remaining 397 tasks in the \"invalid_base_tasks\" list.\n\n**Gaps in current submissions:**\n\n1. **task066**: Replaced with \"submission_scored_output_sets_400\", but not V3-compliant. Build a new V3-compliant network from scratch.\n2. **task076**: Replaced with \"imported_magmacot_5550_neurogolf_logic_driven_ensemble\", but not V3-compliant. Build a new V3-compliant network from scratch.\n...and so on, for the remaining replaced tasks.\n\n**Strategies to build missing V3 files:**\n\n1. **Geometric",
+            "coder": "### Candidate Experiment Branches\n\n1. **Revalidate and Refine Existing Seed Tasks**\n   - Focus on the 400 tasks in the current submission zip.\n   - Use `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated references.\n   - Revalidate each task using the local scorer, keeping only those that pass V3 compliance (no dynamic shapes, minimal MACs, correct constants).\n   - Replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**\n   - Use `imported_magmacot_5550_neurogolf_logic_driven_ensemble` and `latest_konbu_5344` as teacher models.\n   - Generate small, static ONNX graphs for high-value tasks (e.g., `task076`, `task133`, `task188`).\n   - Use ONNX-MLIR or PyTorch-ONNX tools to compile these into minimal computational graphs with fixed shapes and no symbolic dimensions.\n   - Validate each distilled model against the local scorer.\n\n3. **Task-Specific Static Filters**\n   - Identify the 114 invalid base tasks.\n   - Design a single, very small (e.g., <1000 parameters) static-shape network for each task to address unique challenges.\n   - Focus on tasks with relatively simple geometric or logical structures.\n\n4. **Geometric Primitives Ensemble**\n   - Build a suite of small networks that implement geometric primitive transformations (e.g., rotation, scaling, translation, simple blurring).\n   - Combine the outputs of these networks using a learned (but tiny) ensemble model.\n   - Validate the ensemble against the local scorer.\n\n5. **Build Missing V3 Files**\n   - For tasks requiring new V3-compliant network files (e.g., `task004`, `task012`, etc.), build from scratch.\n   - Ensure each new file is V3-compliant and passes validation.\n\n### Likely Files/Scripts to Touch\n\n- **Revalidate and Refine Existing Seed Tasks**\n  - `revalidate_tasks.py`\n  - `refine_seed_tasks.py`\n\n- **Distill Big Models into Static ONNX Graphs**\n  - `distill_models.py`\n  - `compile_onnx_graphs.py`\n\n- **Task-Specific Static Filters**\n  - `design_task_specific_filters.py`\n  - `train_task_specific_filters.py`\n\n- **Geometric Primitives Ensemble**\n  - `build_geometric_primitives.py`\n  - `ensemble_model_training.py`\n\n- **Build Missing V3 Files**\n  - `generate_v3_files.py`\n  - `validate_new_files.py`\n\n### Safe Automation Steps\n\n1. **Revalidate and Refine Existing Seed Tasks**\n   - Run the `revalidate_tasks.py` script to revalidate all tasks.\n   - Use the `refine_seed_tasks.py` script to replace invalid tasks with minimal numpy-based geometric transforms or simple logic gates.\n\n2. **Distill Big Models into Static ONNX Graphs**\n   - Execute the `distill_models.py` script to generate distilled models for high-value tasks.\n   - Run the `compile_onnx_graphs.py` script to compile these models into static ONNX graphs.\n\n3. **Task-Specific Static Filters**\n   -",
+            "critic": "The NeuroGolf strategy bundle you've presented is **riddled with risky assumptions, repetitive experiment choices, and a lack of strategic focus**. Here are the **3 biggest risks or likely mistakes** in this approach:\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Replaced\" Tasks Without V3 Compliance**\n\n**Issue:**  \nThe strategy assumes that replacing tasks with other submissions (e.g., `submission_scored_output_sets_400`, `imported_magmacot_5550`, etc.) automatically ensures V3 compliance. This is a **critical flaw**. The `replaced_count` is 30, but **none of these replacements are validated as V3-compliant**. The system is still using **V2-era models** that are now invalid due to the April 28th metric update.\n\n**Why It's a Mistake:**  \nYou're **relying on unverified, potentially invalid models** to score points. This is a **high-risk gamble** that could lead to **zero score on those tasks"
           },
           "action": "scorer_blend_build",
-          "mode": "skip_known_dynamic_sanitized",
+          "mode": "skip_known_dynamic",
           "seed_label": ""
         },
-        "plan_key": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+        "plan_key": "scorer_blend_build|-|skip_known_dynamic",
         "build_manifest": {
           "files": 400,
           "known_score": 5376.667942,
@@ -23156,15 +23740,599 @@
           "median_gap_per_file": 0.267646,
           "median_abs_gap": 98.225905,
           "build_strategy": "scorer_blend",
-          "mode": "skip_known_dynamic_sanitized",
-          "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_manifest.json",
+          "mode": "skip_known_dynamic",
+          "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomy_cache_smoke3_manifest.json",
           "manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_manifest.json"
         },
-        "experiment_fingerprint": "3e4dcf537139f778",
-        "candidate_signature": "514651321de23c1f",
+        "experiment_fingerprint": "d0b97b32132a9e77",
+        "candidate_signature": "de58843905e0792b",
         "submit_result": {
           "submitted": false,
-          "reason": "pending submission cap reached"
+          "reason": "V3_VALIDATION_FAILED: 40 task files failed ONNX validation",
+          "v3_validation": {
+            "valid": false,
+            "reason": "40 task files failed ONNX validation",
+            "invalid_tasks": [
+              "task014.onnx",
+              "task018.onnx",
+              "task019.onnx",
+              "task020.onnx",
+              "task030.onnx",
+              "task031.onnx",
+              "task036.onnx",
+              "task049.onnx",
+              "task065.onnx",
+              "task091.onnx",
+              "task150.onnx",
+              "task153.onnx",
+              "task155.onnx",
+              "task158.onnx",
+              "task177.onnx",
+              "task184.onnx",
+              "task223.onnx",
+              "task247.onnx",
+              "task249.onnx",
+              "task265.onnx",
+              "task268.onnx",
+              "task269.onnx",
+              "task280.onnx",
+              "task284.onnx",
+              "task286.onnx",
+              "task296.onnx",
+              "task300.onnx",
+              "task304.onnx",
+              "task307.onnx",
+              "task310.onnx",
+              "task315.onnx",
+              "task328.onnx",
+              "task339.onnx",
+              "task349.onnx",
+              "task351.onnx",
+              "task358.onnx",
+              "task364.onnx",
+              "task370.onnx",
+              "task383.onnx",
+              "task384.onnx"
+            ],
+            "dynamic_tasks": [],
+            "missing_tasks": [],
+            "validation_report_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_v3_validation.json",
+            "zip_validation": {
+              "zip_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous.zip",
+              "valid": false,
+              "errors": [
+                "40 task files failed ONNX validation"
+              ],
+              "warnings": [],
+              "files": 400,
+              "valid_files": 360,
+              "invalid_files": 40,
+              "missing_tasks": [],
+              "unexpected_files": [],
+              "invalid_task_reports": [
+                {
+                  "name": "task014.onnx",
+                  "archive_member": "task014.onnx",
+                  "errors": [
+                    "cr_x[0] has symbolic dimension 'unk__0'",
+                    "cr_x[1] has symbolic dimension 'unk__1'",
+                    "cr_x[2] has symbolic dimension 'unk__2'",
+                    "cr_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 2835,
+                  "op_count": 52
+                },
+                {
+                  "name": "task018.onnx",
+                  "archive_member": "task018.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "v16[0] has symbolic dimension 'unk__1'",
+                    "v17[0] has symbolic dimension 'unk__1'",
+                    "v18[0] has symbolic dimension 'unk__1'",
+                    "v19[0] has symbolic dimension 'unk__1'",
+                    "v20[0] has symbolic dimension 'unk__1'",
+                    "v21[0] has symbolic dimension 'unk__1'",
+                    "v22[0] has symbolic dimension 'unk__1'"
+                  ],
+                  "size_bytes": 28788,
+                  "op_count": 27
+                },
+                {
+                  "name": "task019.onnx",
+                  "archive_member": "task019.onnx",
+                  "errors": [
+                    "scal_shape[0] has non-positive dimension 0"
+                  ],
+                  "size_bytes": 4742,
+                  "op_count": 77
+                },
+                {
+                  "name": "task020.onnx",
+                  "archive_member": "task020.onnx",
+                  "errors": [
+                    "profile failed: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()"
+                  ],
+                  "size_bytes": 8265,
+                  "op_count": 143
+                },
+                {
+                  "name": "task030.onnx",
+                  "archive_member": "task030.onnx",
+                  "errors": [
+                    "ar_m2_sliced[0] has symbolic dimension 'unk__0'",
+                    "ar_m2_sliced[1] has symbolic dimension 'unk__1'",
+                    "ar_m2_sliced[2] has symbolic dimension 'unk__2'",
+                    "ar_m2_sliced[3] has symbolic dimension 'unk__3'",
+                    "ar_m2_shifted[0] has symbolic dimension 'unk__4'",
+                    "ar_m2_shifted[1] has symbolic dimension 'unk__5'",
+                    "ar_m2_shifted[2] has symbolic dimension 'unk__6'",
+                    "ar_m2_shifted[3] has symbolic dimension 'unk__7'"
+                  ],
+                  "size_bytes": 5745,
+                  "op_count": 92
+                },
+                {
+                  "name": "task031.onnx",
+                  "archive_member": "task031.onnx",
+                  "errors": [
+                    "nz_x[0] has symbolic dimension 'unk__0'",
+                    "nz_x[1] has symbolic dimension 'unk__1'",
+                    "nz_x[2] has symbolic dimension 'unk__2'",
+                    "nz_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 1982,
+                  "op_count": 34
+                },
+                {
+                  "name": "task036.onnx",
+                  "archive_member": "task036.onnx",
+                  "errors": [
+                    "abc_x[0] has symbolic dimension 'unk__0'",
+                    "abc_x[1] has symbolic dimension 'unk__1'",
+                    "abc_x[2] has symbolic dimension 'unk__2'",
+                    "abc_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 3416,
+                  "op_count": 63
+                },
+                {
+                  "name": "task049.onnx",
+                  "archive_member": "task049.onnx",
+                  "errors": [
+                    "cr_x[0] has symbolic dimension 'unk__0'",
+                    "cr_x[1] has symbolic dimension 'unk__1'",
+                    "cr_x[2] has symbolic dimension 'unk__2'",
+                    "cr_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 2835,
+                  "op_count": 52
+                },
+                {
+                  "name": "task065.onnx",
+                  "archive_member": "task065.onnx",
+                  "errors": [
+                    "Q0[0] has symbolic dimension 'unk__0'",
+                    "Q0[1] has symbolic dimension 'unk__1'",
+                    "Q0[2] has symbolic dimension 'unk__2'",
+                    "Q0[3] has symbolic dimension 'unk__3'",
+                    "Q1[0] has symbolic dimension 'unk__4'",
+                    "Q1[1] has symbolic dimension 'unk__5'",
+                    "Q1[2] has symbolic dimension 'unk__6'",
+                    "Q1[3] has symbolic dimension 'unk__7'"
+                  ],
+                  "size_bytes": 3326,
+                  "op_count": 68
+                },
+                {
+                  "name": "task091.onnx",
+                  "archive_member": "task091.onnx",
+                  "errors": [
+                    "crop5_crop_0[0] has symbolic dimension 'unk__0'",
+                    "crop5_crop_0[1] has symbolic dimension 'unk__1'",
+                    "crop5_crop_0[2] has symbolic dimension 'unk__2'",
+                    "crop5_crop_0[3] has symbolic dimension 'unk__3'",
+                    "crop5_zero_right_0[0] has symbolic dimension 'unk__4'",
+                    "crop5_zero_right_0[1] has symbolic dimension 'unk__5'",
+                    "crop5_zero_right_0[2] has symbolic dimension 'unk__6'",
+                    "crop5_zero_right_0[3] has symbolic dimension 'unk__7'"
+                  ],
+                  "size_bytes": 42211,
+                  "op_count": 35
+                },
+                {
+                  "name": "task150.onnx",
+                  "archive_member": "task150.onnx",
+                  "errors": [
+                    "rev[0] has symbolic dimension 'unk__0'",
+                    "rev[1] has symbolic dimension 'unk__1'",
+                    "rev[2] has symbolic dimension 'unk__2'",
+                    "rev[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 1850,
+                  "op_count": 27
+                },
+                {
+                  "name": "task153.onnx",
+                  "archive_member": "task153.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "ch1_1[0] has symbolic dimension 'unk__0'",
+                    "cv1_2[0] has symbolic dimension 'unk__0'",
+                    "mx1_3[0] has symbolic dimension 'unk__0'",
+                    "ar1_4[0] has symbolic dimension 'unk__0'",
+                    "oe1_5[0] has symbolic dimension 'unk__0'",
+                    "ae1_6[0] has symbolic dimension 'unk__0'",
+                    "ok1_7[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 377910,
+                  "op_count": 3848
+                },
+                {
+                  "name": "task155.onnx",
+                  "archive_member": "task155.onnx",
+                  "errors": [
+                    "rev[0] has symbolic dimension 'unk__0'",
+                    "rev[1] has symbolic dimension 'unk__1'",
+                    "rev[2] has symbolic dimension 'unk__2'",
+                    "rev[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 1903,
+                  "op_count": 28
+                },
+                {
+                  "name": "task158.onnx",
+                  "archive_member": "task158.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "counts[0] has symbolic dimension 'unk__0'",
+                    "bg_idx[0] has symbolic dimension 'unk__0'",
+                    "bg_oh_b[0] has symbolic dimension 'unk__0'",
+                    "bg_oh[0] has symbolic dimension 'unk__0'",
+                    "X_bg[0] has symbolic dimension 'unk__0'",
+                    "Bg[0] has symbolic dimension 'unk__0'",
+                    "Wcnt[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 76927,
+                  "op_count": 1043
+                },
+                {
+                  "name": "task177.onnx",
+                  "archive_member": "task177.onnx",
+                  "errors": [
+                    "cropped[0] has symbolic dimension 'unk__0'",
+                    "cropped[1] has symbolic dimension 'unk__1'",
+                    "cropped[2] has symbolic dimension 'unk__2'",
+                    "cropped[3] has symbolic dimension 'unk__3'",
+                    "pad_right[0] has symbolic dimension 'unk__4'",
+                    "pad_right[1] has symbolic dimension 'unk__5'",
+                    "pad_right[2] has symbolic dimension 'unk__6'",
+                    "pad_right[3] has symbolic dimension 'unk__7'"
+                  ],
+                  "size_bytes": 2579,
+                  "op_count": 46
+                },
+                {
+                  "name": "task184.onnx",
+                  "archive_member": "task184.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "any_hot[0] has symbolic dimension 'unk__0'",
+                    "bg_channel[0] has symbolic dimension 'unk__0'",
+                    "non_bg[0] has symbolic dimension 'unk__0'",
+                    "row_content_count[0] has symbolic dimension 'unk__0'",
+                    "row_nonbg_count[0] has symbolic dimension 'unk__0'",
+                    "col_content_count[0] has symbolic dimension 'unk__0'",
+                    "col_nonbg_count[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 5966,
+                  "op_count": 102
+                },
+                {
+                  "name": "task223.onnx",
+                  "archive_member": "task223.onnx",
+                  "errors": [
+                    "rsz_roi[0] has non-positive dimension 0",
+                    "rsz_scales[0] has non-positive dimension 0"
+                  ],
+                  "size_bytes": 825,
+                  "op_count": 10
+                },
+                {
+                  "name": "task247.onnx",
+                  "archive_member": "task247.onnx",
+                  "errors": [
+                    "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+                  ],
+                  "size_bytes": 2614,
+                  "op_count": null
+                },
+                {
+                  "name": "task249.onnx",
+                  "archive_member": "task249.onnx",
+                  "errors": [
+                    "content[0] has symbolic dimension 'unk__0'",
+                    "content[1] has symbolic dimension 'unk__1'",
+                    "content[2] has symbolic dimension 'unk__2'",
+                    "content[3] has symbolic dimension 'unk__3'",
+                    "full[0] has symbolic dimension 'unk__0'",
+                    "full[1] has symbolic dimension 'unk__1'",
+                    "full[2] has symbolic dimension 'unk__2'",
+                    "full[3] has symbolic dimension 'unk__4'"
+                  ],
+                  "size_bytes": 2187,
+                  "op_count": 36
+                },
+                {
+                  "name": "task265.onnx",
+                  "archive_member": "task265.onnx",
+                  "errors": [
+                    "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+                  ],
+                  "size_bytes": 3496,
+                  "op_count": null
+                },
+                {
+                  "name": "task268.onnx",
+                  "archive_member": "task268.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "fg_1[0] has symbolic dimension 'unk__0'",
+                    "obj_f_2[0] has symbolic dimension 'unk__0'",
+                    "obj_3[0] has symbolic dimension 'unk__0'",
+                    "ch0_4[0] has symbolic dimension 'unk__0'",
+                    "bg_5[0] has symbolic dimension 'unk__0'",
+                    "row_vals_6[0] has symbolic dimension 'unk__0'",
+                    "col_vals_7[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 11063,
+                  "op_count": 182
+                },
+                {
+                  "name": "task269.onnx",
+                  "archive_member": "task269.onnx",
+                  "errors": [
+                    "v18[0] has symbolic dimension 'unk__0'",
+                    "v18[1] has symbolic dimension 'unk__1'",
+                    "v18[2] has symbolic dimension 'unk__2'",
+                    "v18[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 958,
+                  "op_count": 11
+                },
+                {
+                  "name": "task280.onnx",
+                  "archive_member": "task280.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "v292[0] has symbolic dimension 'unk__1'",
+                    "v293[0] has symbolic dimension 'unk__1'",
+                    "v294[0] has symbolic dimension 'unk__1'",
+                    "v295[0] has symbolic dimension 'unk__1'",
+                    "v296[0] has symbolic dimension 'unk__1'",
+                    "v297[0] has symbolic dimension 'unk__1'",
+                    "v298[0] has symbolic dimension 'unk__1'"
+                  ],
+                  "size_bytes": 14240,
+                  "op_count": 237
+                },
+                {
+                  "name": "task284.onnx",
+                  "archive_member": "task284.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "v13[0] has symbolic dimension 'unk__0'",
+                    "v14[0] has symbolic dimension 'unk__0'",
+                    "v15[0] has symbolic dimension 'unk__0'",
+                    "v16[0] has symbolic dimension 'unk__0'",
+                    "v17[0] has symbolic dimension 'unk__0'",
+                    "v18[0] has symbolic dimension 'unk__0'",
+                    "v19[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 5774,
+                  "op_count": 164
+                },
+                {
+                  "name": "task286.onnx",
+                  "archive_member": "task286.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "v13[0] has symbolic dimension 'unk__1'",
+                    "v14[0] has symbolic dimension 'unk__1'",
+                    "v15[0] has symbolic dimension 'unk__1'",
+                    "v16[0] has symbolic dimension 'unk__1'",
+                    "v17[0] has symbolic dimension 'unk__1'",
+                    "v18[0] has symbolic dimension 'unk__1'",
+                    "v19[0] has symbolic dimension 'unk__1'"
+                  ],
+                  "size_bytes": 14066,
+                  "op_count": 146
+                },
+                {
+                  "name": "task296.onnx",
+                  "archive_member": "task296.onnx",
+                  "errors": [
+                    "profile failed: 'list' object has no attribute 'reshape'"
+                  ],
+                  "size_bytes": 1314,
+                  "op_count": 16
+                },
+                {
+                  "name": "task300.onnx",
+                  "archive_member": "task300.onnx",
+                  "errors": [
+                    "cr_x[0] has symbolic dimension 'unk__0'",
+                    "cr_x[1] has symbolic dimension 'unk__1'",
+                    "cr_x[2] has symbolic dimension 'unk__2'",
+                    "cr_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 2476,
+                  "op_count": 43
+                },
+                {
+                  "name": "task304.onnx",
+                  "archive_member": "task304.onnx",
+                  "errors": [
+                    "fd_roi[0] has non-positive dimension 0",
+                    "fd_scales[0] has non-positive dimension 0"
+                  ],
+                  "size_bytes": 1581,
+                  "op_count": 24
+                },
+                {
+                  "name": "task307.onnx",
+                  "archive_member": "task307.onnx",
+                  "errors": [
+                    "content[0] has symbolic dimension 'unk__0'",
+                    "content[1] has symbolic dimension 'unk__1'",
+                    "content[2] has symbolic dimension 'unk__2'",
+                    "content[3] has symbolic dimension 'unk__3'",
+                    "vu_roi[0] has non-positive dimension 0",
+                    "upscaled[0] has symbolic dimension 'unk__4'",
+                    "upscaled[1] has symbolic dimension 'unk__5'",
+                    "upscaled[2] has symbolic dimension 'unk__6'"
+                  ],
+                  "size_bytes": 2326,
+                  "op_count": 39
+                },
+                {
+                  "name": "task310.onnx",
+                  "archive_member": "task310.onnx",
+                  "errors": [
+                    "cr_x[0] has symbolic dimension 'unk__0'",
+                    "cr_x[1] has symbolic dimension 'unk__1'",
+                    "cr_x[2] has symbolic dimension 'unk__2'",
+                    "cr_x[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 2835,
+                  "op_count": 52
+                },
+                {
+                  "name": "task315.onnx",
+                  "archive_member": "task315.onnx",
+                  "errors": [
+                    "fs_roi[0] has non-positive dimension 0",
+                    "fs_scales[0] has non-positive dimension 0"
+                  ],
+                  "size_bytes": 1201,
+                  "op_count": 17
+                },
+                {
+                  "name": "task328.onnx",
+                  "archive_member": "task328.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 35416,
+                  "op_count": 140
+                },
+                {
+                  "name": "task339.onnx",
+                  "archive_member": "task339.onnx",
+                  "errors": [
+                    "v21[0] has symbolic dimension 'unk__0'",
+                    "v21[1] has symbolic dimension 'unk__1'",
+                    "v21[2] has symbolic dimension 'unk__2'",
+                    "v21[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 1098,
+                  "op_count": 12
+                },
+                {
+                  "name": "task349.onnx",
+                  "archive_member": "task349.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 8768,
+                  "op_count": 103
+                },
+                {
+                  "name": "task351.onnx",
+                  "archive_member": "task351.onnx",
+                  "errors": [
+                    "v22[0] has symbolic dimension 'unk__0'",
+                    "v22[1] has symbolic dimension 'unk__1'",
+                    "v22[2] has symbolic dimension 'unk__2'",
+                    "v22[3] has symbolic dimension 'unk__3'"
+                  ],
+                  "size_bytes": 1256,
+                  "op_count": 17
+                },
+                {
+                  "name": "task358.onnx",
+                  "archive_member": "task358.onnx",
+                  "errors": [
+                    "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Conv, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Mul, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:ReduceSum, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Sub, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Concat, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+                  ],
+                  "size_bytes": 7990,
+                  "op_count": null
+                },
+                {
+                  "name": "task364.onnx",
+                  "archive_member": "task364.onnx",
+                  "errors": [
+                    "onnx check or static shape inference failed: [ShapeInferenceError] Inference error(s): (op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n(op_type:Gather, node name: ): [TypeInferenceError] Input 0 expected to have type but instead is null\n"
+                  ],
+                  "size_bytes": 11071,
+                  "op_count": null
+                },
+                {
+                  "name": "task370.onnx",
+                  "archive_member": "task370.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "zero_mask[0] has symbolic dimension 'unk__0'",
+                    "valid_mask[0] has symbolic dimension 'unk__0'",
+                    "color_counts[0] has symbolic dimension 'unk__0'",
+                    "singleton_bool[0] has symbolic dimension 'unk__0'",
+                    "singleton_float[0] has symbolic dimension 'unk__0'",
+                    "singleton_nonzero_out[0] has symbolic dimension 'unk__0'",
+                    "marker_out[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 31545,
+                  "op_count": 342
+                },
+                {
+                  "name": "task383.onnx",
+                  "archive_member": "task383.onnx",
+                  "errors": [
+                    "input_compress_batch_gate[0] has symbolic dimension 'unk__0'",
+                    "fg_1[0] has symbolic dimension 'unk__0'",
+                    "fg_sum_2[0] has symbolic dimension 'unk__0'",
+                    "fg_3[0] has symbolic dimension 'unk__0'",
+                    "row_min_vals_4[0] has symbolic dimension 'unk__0'",
+                    "y0_5[0] has symbolic dimension 'unk__0'",
+                    "col_min_vals_6[0] has symbolic dimension 'unk__0'",
+                    "x0_7[0] has symbolic dimension 'unk__0'"
+                  ],
+                  "size_bytes": 16059,
+                  "op_count": 273
+                },
+                {
+                  "name": "task384.onnx",
+                  "archive_member": "task384.onnx",
+                  "errors": [
+                    "ch4_sliced[0] has symbolic dimension 'unk__0'",
+                    "ch4_sliced[1] has symbolic dimension 'unk__1'",
+                    "ch4_sliced[2] has symbolic dimension 'unk__2'",
+                    "ch4_sliced[3] has symbolic dimension 'unk__3'",
+                    "bbox_sliced[0] has symbolic dimension 'unk__4'",
+                    "bbox_sliced[1] has symbolic dimension 'unk__5'",
+                    "bbox_sliced[2] has symbolic dimension 'unk__6'",
+                    "bbox_sliced[3] has symbolic dimension 'unk__7'"
+                  ],
+                  "size_bytes": 3216,
+                  "op_count": 48
+                }
+              ],
+              "score_estimate": {
+                "profiled_files": 360,
+                "total_points": 4683.476409520295,
+                "avg_points": 13.009656693111932
+              }
+            }
+          }
         }
       }
     ],
@@ -23187,8 +24355,8 @@
           "total_cycles": 51,
           "success_rate": 0.0196078431372549,
           "failures": 50,
-          "latest_branch": "scorer_blend_build|-|skip_known_dynamic_sanitized",
-          "latest_reason": "pending submission cap reached",
+          "latest_branch": "scorer_blend_build|-|skip_known_dynamic",
+          "latest_reason": "v3_validation_failed: 40 task files failed onnx validation",
           "latest_files": 400,
           "latest_score": 5269.609735,
           "recent_branch_streak": 1,
@@ -23289,13 +24457,14 @@
         "mode": "adaptive_learning",
         "analysis_summary": "Adaptive learning is steering the planner toward gradual, competition-intended progress: keep the strongest 400/400 baseline, avoid repeated seed loops, and rebuild the weakest per-task graphs first.",
         "recommendation": "Treat the latest 400/400 pack as the baseline and chase per-task graph reductions instead of restarting from raw seeds.",
-        "latest_branch": "scorer_blend_build|-|skip_known_dynamic_sanitized",
-        "latest_reason": "pending submission cap reached",
-        "latest_mode": "skip_known_dynamic_sanitized",
+        "latest_branch": "scorer_blend_build|-|skip_known_dynamic",
+        "latest_reason": "v3_validation_failed: 40 task files failed onnx validation",
+        "latest_mode": "skip_known_dynamic",
         "latest_files": 400,
         "baseline_estimated_score": 5269.609735,
         "planner_hints": [
-          "Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic_sanitized at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.",
+          "Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.",
+          "Keep skip_known_dynamic as the default fresh-build mode until another validated mode beats it on score or task quality.",
           "Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.",
           "The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (49 cycles). Put new effort into weaker tasks rather than replaying the same branch."
         ],
@@ -23355,12 +24524,12 @@
             "cost_hint": 961191
           }
         ],
-        "operator_note": "Adaptive guidance:\n- Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic_sanitized at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.\n- Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.\n- The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (49 cycles). Put new effort into weaker tasks rather than replaying the same branch.\n- Weakest current tasks to rebuild first: task157 (9.76, artem_blend_new), task048 (10.43, artem_blend_new), task025 (10.72, latest_amanatar_optimal), task340 (10.96, artem_blend_new), task125 (11.18, artem_blend_new), task077 (11.22, latest_konbu_5344)."
+        "operator_note": "Adaptive guidance:\n- Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.\n- Keep skip_known_dynamic as the default fresh-build mode until another validated mode beats it on score or task quality.\n- Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.\n- The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (49 cycles). Put new effort into weaker tasks rather than replaying the same branch.\n- Weakest current tasks to rebuild first: task157 (9.76, artem_blend_new), task048 (10.43, artem_blend_new), task025 (10.72, latest_amanatar_optimal), task340 (10.96, artem_blend_new), task125 (11.18, artem_blend_new), task077 (11.22, latest_konbu_5344)."
       }
     },
-    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_213043.json"
+    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_214058.json"
   },
-  "last_seen_at": "2026-05-06T21:40:49Z",
+  "last_seen_at": "2026-05-06T21:41:09Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
