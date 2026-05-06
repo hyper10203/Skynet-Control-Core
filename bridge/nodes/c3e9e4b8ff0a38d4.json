@@ -5,11 +5,15 @@
   "workspace_root": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system",
   "kaggle_username": "subhampaulchoudhury",
   "daemon": {
-    "running": false,
-    "pid": null,
+    "running": true,
+    "pid": 18444,
+    "created_at": "2026-05-06T16:05:28",
+    "cpu_percent": 0.0,
+    "memory_mb": 10.4,
+    "status": "running",
     "status_updated_at": "2026-05-06T10:31:41Z",
     "status_stale": false,
-    "status_age_seconds": 215.07649
+    "status_age_seconds": 232.961287
   },
   "phase": "reasoning",
   "message": "Querying reasoning_primary: mistral:7b-text-fp16",
@@ -1370,7 +1374,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_102903.json"
   },
-  "last_seen_at": "2026-05-06T10:35:16Z",
+  "last_seen_at": "2026-05-06T10:35:34Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
