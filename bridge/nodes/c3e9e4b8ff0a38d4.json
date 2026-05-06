@@ -11,13 +11,13 @@
     "cpu_percent": 0.0,
     "memory_mb": 0.0,
     "status": "running",
-    "status_updated_at": "2026-05-06T14:08:13Z",
+    "status_updated_at": "2026-05-06T14:08:43Z",
     "status_stale": false,
-    "status_age_seconds": 14.516301
+    "status_age_seconds": 3.783166
   },
-  "phase": "reasoning",
-  "message": "Querying orchestrator: qwen3:8b",
-  "progress": 0.2,
+  "phase": "idle",
+  "message": "Cycle complete",
+  "progress": 1.0,
   "best_completed_public_score": null,
   "latest_completed_public_score": null,
   "pending_submission_count": 0,
@@ -1123,23 +1123,23 @@
     "goal_reached": true
   },
   "latest_report": {
-    "started_at": "2026-05-06T13:40:12Z",
+    "started_at": "2026-05-06T14:08:35Z",
     "plan": {
       "target": "",
-      "variant_hint": "skip_known_dynamic_sanitized",
+      "variant_hint": "skip_known_dynamic",
       "should_submit": true,
-      "rationale": "Build minimal static ONNX graphs for all 400 tasks using simple numpy operations to ensure V3 compliance and avoid dynamic shapes. | switched to a fresh static-build branch | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
-      "submission_message": "Constructing 400 minimal static ONNX graphs with geometric transforms and element-wise operations for all tasks.",
-      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using simple numpy operations to ensure V3 compliance and avoid dynamic shapes.\",\n  \"submission_message\": \"Constructing 400 minimal static ONNX graphs with geometric transforms and element-wise operations for all tasks.\"\n}",
+      "rationale": "Build minimal static ONNX graphs for all 400 tasks using numpy and basic operations, ensuring V3 compliance. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
+      "submission_message": "Constructing fresh static networks for all 400 tasks with V3 compliance.",
+      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using numpy and basic operations, ensuring V3 compliance.\",\n  \"submission_message\": \"Constructing fresh static networks for all 400 tasks with V3 compliance.\"\n}",
       "team_strategy": {
-        "primary": "1. **Revalidate and Refine Existing Task Swaps**  \n   Focus on the 40+ task deltas in the `replacements` list. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated sources. Replace invalid base tasks with these validated ones, ensuring all new graphs are static, minimal, and V3-compliant. Prioritize tasks with the highest delta (e.g., `task089`, `task076`, `task133`) to maximize score gains.\n\n2. **Fresh Build for Remaining Invalid Tasks**  \n   For the 340+ invalid base tasks in `invalid_base_tasks`, switch to **fresh_build** mode. Generate 400 minimal static ONNX graphs using simple numpy operations (e.g., geometric transforms, element-wise ops). Use small weight matrices and avoid dynamic shapes. Validate each task against the V3 scorer before submission.\n\n3. **Distill and Optimize with Big Models**  \n   Use the `imported_magmacot_",
-        "secondary": "Okay, here's a list of NeuroGolf experiment ideas, prioritizing minimal computational graphs and static shapes, given the April 28th update and Metric V3 optimization. These go beyond simple seed preservation and focus on novel approaches.\n\n1.  **Task-Specific Geometric Transformations (TGT):**  Instead of a network, use a library of static geometric transformations (rotations, scaling, shearing, affine) applied to the input data *before* feeding it to a very small (e.g., 1-2 layer) neural network.  The transformation parameters themselves are *not* learned; they are hand-tuned or systematically searched using a simple optimization loop. This leverages geometric priors, minimizes MACs, and guarantees static shapes.  Focus on the 114 invalid tasks first \u2013 can geometric transforms rescue them?\n\n2.  **\"Teacher\" Static Shape Extraction & Minimal Rebuild:**  Identify the *most* successful kernels from existing imports (e.g., from `imported_afr1ste_neurogolf_6285_95_public_score_open_solution` or other high-scoring imports) that *appear* to have relatively simple, static structures (visually inspect their graphs).  Then, *manually",
-        "tertiary": "Here's the report:\n\n**Task Identification**\n\n1. **New V3-compliant network files**: Tasks \"task004\", \"task012\", ..., \"task397\" require new V3-compliant network files, as they are not present in current packs.\n\n2. **Gaps in current submissions**: Tasks \"task066\", \"task076\", ..., \"task387\" have gaps in their current submissions, where static-shape networks must be built from scratch.\n\n**Imported Source Analysis**\n\n1. **Kaggle imports**: Kaggle imports are V3 compliant, with minimal MACs, memory, and params.\n\n2. **Local manifests**: Local manifests are a mix of V3-compliant and V2-era files. Tasks \"task066\", \"task076\", ..., \"task387\" require updating to V3 compliance.\n\n3. **Prior lessons**: Prior lessons from V2 era can be adapted for V3, but with caution, as some techniques may not generalize well.\n\n4. **Public seed behavior**: Public seed behavior suggests that simple, tiny networks are more effective than complex ones.\n\n**Strategy Suggestions**\n\n1. **Geometric transforms**: Consider using geometric transforms instead of learned weights to solve tasks \"task066\", \"task076\", ..., \"task387\".\n\n2. **",
-        "coder": "### Candidate Experiment Branches\n\n1. **Geometric Transformations (TGT)**\n   - Implement a library of static geometric transformations.\n   - Apply these transformations to input data before feeding it into a small neural network.\n   - Focus on tasks with high deltas and validate against the V3 scorer.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports that have simple, static structures.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer before submission.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations (e.g., geometric transforms, element-wise ops).\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer before submission.\n\n### Likely Files/Scripts to Touch\n\n1. **Geometric Transformations**\n   - `geometric_transforms.py`\n   - `small_neural_network.py`\n   - `validation_script.py`\n\n2. **Teacher-Driven Static Shape Extraction**\n   - `successful_kernels.py`\n   - `static_shape_rebuild.py`\n   - `validation_script.py`\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - `minimal_onnx_graphs.py`\n   - `numpy_operations.py`\n   - `validation_script.py`\n\n### Safe Automation Steps\n\n1. **Geometric Transformations**\n   - Implement geometric transformations in `geometric_transforms.py`.\n   - Integrate these transformations into the neural network pipeline.\n   - Run a series of experiments on high-delta tasks.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations.\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer.\n\n### Top 3 Experiments to Run Next\n\n1. **Geometric Transformations on High-Delta Tasks**\n   - Focus on tasks with high deltas (e.g., `task089`, `task076`, `task133`).\n   - Implement geometric transformations and validate against the V3 scorer.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations.\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer.\n\nBy following these steps, you can systematically address the gaps in your current submissions and explore new strategies to maximize score gains.",
-        "critic": "**The 3 Biggest Risks or Likely Mistakes in This NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"Replacements\" Without Deep Validation**\n\n**Risk:** The strategy assumes that simply swapping in \"validated\" sources like `submission_scored_output_sets_400` or `latest_karnak_logic_tasks` will automatically improve scores. However, **this ignores the possibility that these sources themselves are not fully validated or optimized for the V3 scorer**. The `replacements` list includes 40+ tasks, but **none of them are explicitly validated against the V3 scorer**. Swapping in untested models risks introducing new invalid shapes, dynamic operations, or non-compliant structures that could **worsen the public score**.\n\n**Mistake:** Assuming that \"imported\" or \"scored\" sources are inherently valid without re-evaluating them under the V3 metric is a dangerous assumption. This is a classic case of **relying on the \"imported\" label rather than the actual model behavior**"
+        "primary": "1. **Revalidate and Refine Existing Replacements**  \n   Focus on the 40+ task replacements in the current manifest. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated sources. For each task, recheck if the replacement model is V3-compliant (static shapes, minimal ops). If valid, keep it; if not, replace with a simpler numpy-based solution using geometric transforms or element-wise ops.\n\n2. **Fresh Build for Missing Tasks**  \n   For the 144+ invalid base tasks in `invalid_base_tasks`, initiate a **fresh_build** mode. Generate 400 minimal networks using only numpy and basic operations (Add, Mul, Reshape). Prioritize small weight matrices, avoid dynamic shapes, and ensure all ops are static and symbolic. Validate each task against the V3 scorer before proceeding.\n\n3. **Distill Large Models into Static ONNX Graphs**  \n   Use the `imported_magmacot_5550` and `latest_k",
+        "secondary": "Okay, here's a list of NeuroGolf experimental directions, focused on minimal computational graphs and static shapes, avoiding the pitfalls of the previous dynamic-shape exploits, and prioritizing Metric V3 optimization.  I've tried to go beyond simple seed preservation and offer distinct approaches.\n\n1. **\"Task-Specific Static Feature Extractors\":** Instead of a monolithic network, build *separate*, tiny networks (e.g., 2-5 layers, <1000 params each) for each of the *invalid* base tasks (tasks 004, 012, etc.). These networks would be trained to extract a small set of *static* features (e.g., edge histograms, corner counts, simple geometric descriptors) directly from the input image.  These features are then fed into a *shared*, even smaller, classification network.  This isolates the complexity and allows for focused optimization.  The goal is to see if a minimal, handcrafted feature set can approximate what a larger, dynamic network was previously doing.\n\n2. **\"Geometric Primitive Regression\":** Many tasks involve recognizing simple geometric shapes (lines, circles, triangles).  Instead of a full network, train a regression model to directly predict the parameters of these primitives (e.g",
+        "tertiary": "Here's the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**Task Identification**\n\n1. **New V3-compliant network files**: Tasks 004, 012, 015, 016, 021, 023, 024, 025, 032, 047, 048, 050, 053, 055, 063, 067, 071, 073, 074, 077, 081, 085, 086, 088, 092, 096, 098, 099, 101, 107, 117, 120, 122, 125, 127, 129, 132, 135, 139, 141, 147, 151, 157, 160, 161, 162, 166, 168, 180, 181, 182, 183, 185, 187, 190, 192, 193, 196, 198, 199, 202, 205, 207, 212, 220, 222, 224, 225, 226, 229, 230, 231, 232, 239, 244, 253",
+        "coder": "### Candidate Experiment Branches\n\n1. **Task-Specific Static Feature Extractors**\n   - Focus on creating small, static networks for each invalid base task.\n   - Use geometric transforms and element-wise operations.\n   - Validate against the V3 scorer.\n\n2. **Geometric Primitive Regression**\n   - Train regression models to predict parameters of simple geometric shapes.\n   - Simplify network architecture to avoid dynamic shapes.\n   - Validate against the V3 scorer.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Convert large, dynamic models into static ONNX graphs.\n   - Use numpy-based solutions for minimal networks.\n   - Validate against the V3 scorer.\n\n### Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Feature Extractors**\n   - `task_specific_feature_extractors.py`\n   - `shared_classification_network.py`\n   - `utils/static_operations.py`\n\n2. **Geometric Primitive Regression**\n   - `geometric_regression_models.py`\n   - `utils/primitive_utils.py`\n   - `validation_scripts/v3_validation.py`\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - `large_model_distillation.py`\n   - `utils/onnx_conversion.py`\n   - `validation_scripts/v3_validation.py`\n\n### Safe Automation Steps\n\n1. **Revalidate and Refine Existing Replacements**\n   - Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks`.\n   - Check for V3-compliance using static shapes and minimal ops.\n   - Replace non-compliant models with simpler numpy-based solutions.\n\n2. **Fresh Build for Missing Tasks**\n   - Initiate a `fresh_build` mode.\n   - Generate 400 minimal networks using only numpy and basic operations.\n   - Validate each task against the V3 scorer before proceeding.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Use the `imported_magmacot_5550` and `latest_konbu_5344`.\n   - Convert large models into static ONNX graphs.\n   - Validate each model against the V3 scorer.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Feature Extractors**\n   - Implement separate, tiny networks for each invalid base task.\n   - Train and validate these networks using geometric transforms and element-wise operations.\n   - Focus on optimizing for static shapes and minimal parameters.\n\n2. **Geometric Primitive Regression**\n   - Develop regression models to predict parameters of simple geometric shapes.\n   - Simplify network architecture to avoid dynamic shapes.\n   - Validate the performance against the V3 scorer.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Convert large, dynamic models into static ONNX graphs using numpy-based solutions.\n   - Ensure all operations are static and symbolic.\n   - Validate each model against the V3 scorer to ensure compliance.\n\nBy following these steps and experimenting with different approaches, you can effectively refine and optimize your NeuroGolf automation strategy.",
+        "critic": "**The 3 Biggest Risks or Likely Mistakes in This NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"Replacements\" Without Understanding the Core Problem**\n\n**Risk:** The strategy assumes that replacing existing models (e.g., `task066`, `task076`, etc.) with new ones (like `submission_scored_output_sets_400`) will automatically improve the score. However, this is a **repetitive and risky assumption** that ignores the **fundamental issue** of why those original models failed.\n\n**Why It\u2019s a Mistake:**  \n- Many of the tasks in `invalid_base_tasks` are **structurally different** from the original models. Replacing them with similar models (e.g., `submission_scored_output_sets_400`) may not address the **underlying shape or logic constraints** of the task.\n- The **delta values** (e.g., `delta: 4.855324` for `task076`) suggest that the replacement"
       },
       "action": "scorer_blend_build",
-      "mode": "skip_known_dynamic_sanitized",
+      "mode": "skip_known_dynamic",
       "seed_label": ""
     },
     "best_completed_public_score": null,
@@ -1154,6 +1154,7 @@
     },
     "learning": {
       "branch_counts": {
+        "scorer_blend_build|-|skip_known_dynamic_sanitized": 1,
         "scorer_blend_build|-|skip_known_dynamic": 23,
         "direct_seed_pack|imported_konbu17_neurogolf_2026_4959_61_4_28_update_version|-": 9,
         "cached_candidate_submit|submission_autonomous_validated.zip|strict_known": 1,
@@ -1172,19 +1173,19 @@
         "seed_preserving_build|latest_rocker_5353|hybrid_priority": 1,
         "seed_preserving_build|latest_rocker_5353|fill_invalid_priority": 1,
         "seed_preserving_build|latest_rocker_5353|processable_best": 1,
-        "seed_preserving_build|latest_artem_part2|hybrid_priority": 1,
-        "seed_preserving_build|latest_artem_part2|fill_invalid_priority": 1
+        "seed_preserving_build|latest_artem_part2|hybrid_priority": 1
       },
       "blocked_branches": [],
       "recent_streak": {
-        "key": "scorer_blend_build|-|skip_known_dynamic",
-        "count": 23
+        "key": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+        "count": 1
       },
       "submitted_fingerprints": [],
       "seen_candidate_signatures": [
         "0029d48c13363cda",
         "03947d1481a9c461",
         "2ebb3b0f9b25d9ad",
+        "514651321de23c1f",
         "6bd638309eb60b50",
         "79a42036283a96fa",
         "91a8d92282f63566",
@@ -1196,12 +1197,9 @@
         "dd387bb9c9b35c5e",
         "e31ec3e91898d10f",
         "e667213a32f0c3b7",
-        "ea095a114d6564e4",
         "fc9e2edd12205c78"
       ],
-      "recommendations": [
-        "Break the repeated branch streak: scorer_blend_build|-|skip_known_dynamic appeared 23 times in a row."
-      ]
+      "recommendations": []
     },
     "build_manifest": {
       "files": 400,
@@ -12176,12 +12174,12 @@
       "median_gap_per_file": 0.267646,
       "median_abs_gap": 98.225905,
       "build_strategy": "scorer_blend",
-      "mode": "skip_known_dynamic_sanitized",
+      "mode": "skip_known_dynamic",
       "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_manifest.json",
       "manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_manifest.json"
     },
-    "experiment_fingerprint": "3e4dcf537139f778",
-    "candidate_signature": "514651321de23c1f",
+    "experiment_fingerprint": "d0b97b32132a9e77",
+    "candidate_signature": "de58843905e0792b",
     "submit_result": {
       "submitted": false,
       "reason": "V3_VALIDATION_FAILED: 40 task files failed ONNX validation",
@@ -12775,23 +12773,23 @@
         "attempt": 1,
         "plan": {
           "target": "",
-          "variant_hint": "skip_known_dynamic_sanitized",
+          "variant_hint": "skip_known_dynamic",
           "should_submit": true,
-          "rationale": "Build minimal static ONNX graphs for all 400 tasks using simple numpy operations to ensure V3 compliance and avoid dynamic shapes. | switched to a fresh static-build branch | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
-          "submission_message": "Constructing 400 minimal static ONNX graphs with geometric transforms and element-wise operations for all tasks.",
-          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using simple numpy operations to ensure V3 compliance and avoid dynamic shapes.\",\n  \"submission_message\": \"Constructing 400 minimal static ONNX graphs with geometric transforms and element-wise operations for all tasks.\"\n}",
+          "rationale": "Build minimal static ONNX graphs for all 400 tasks using numpy and basic operations, ensuring V3 compliance. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
+          "submission_message": "Constructing fresh static networks for all 400 tasks with V3 compliance.",
+          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static ONNX graphs for all 400 tasks using numpy and basic operations, ensuring V3 compliance.\",\n  \"submission_message\": \"Constructing fresh static networks for all 400 tasks with V3 compliance.\"\n}",
           "team_strategy": {
-            "primary": "1. **Revalidate and Refine Existing Task Swaps**  \n   Focus on the 40+ task deltas in the `replacements` list. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated sources. Replace invalid base tasks with these validated ones, ensuring all new graphs are static, minimal, and V3-compliant. Prioritize tasks with the highest delta (e.g., `task089`, `task076`, `task133`) to maximize score gains.\n\n2. **Fresh Build for Remaining Invalid Tasks**  \n   For the 340+ invalid base tasks in `invalid_base_tasks`, switch to **fresh_build** mode. Generate 400 minimal static ONNX graphs using simple numpy operations (e.g., geometric transforms, element-wise ops). Use small weight matrices and avoid dynamic shapes. Validate each task against the V3 scorer before submission.\n\n3. **Distill and Optimize with Big Models**  \n   Use the `imported_magmacot_",
-            "secondary": "Okay, here's a list of NeuroGolf experiment ideas, prioritizing minimal computational graphs and static shapes, given the April 28th update and Metric V3 optimization. These go beyond simple seed preservation and focus on novel approaches.\n\n1.  **Task-Specific Geometric Transformations (TGT):**  Instead of a network, use a library of static geometric transformations (rotations, scaling, shearing, affine) applied to the input data *before* feeding it to a very small (e.g., 1-2 layer) neural network.  The transformation parameters themselves are *not* learned; they are hand-tuned or systematically searched using a simple optimization loop. This leverages geometric priors, minimizes MACs, and guarantees static shapes.  Focus on the 114 invalid tasks first \u2013 can geometric transforms rescue them?\n\n2.  **\"Teacher\" Static Shape Extraction & Minimal Rebuild:**  Identify the *most* successful kernels from existing imports (e.g., from `imported_afr1ste_neurogolf_6285_95_public_score_open_solution` or other high-scoring imports) that *appear* to have relatively simple, static structures (visually inspect their graphs).  Then, *manually",
-            "tertiary": "Here's the report:\n\n**Task Identification**\n\n1. **New V3-compliant network files**: Tasks \"task004\", \"task012\", ..., \"task397\" require new V3-compliant network files, as they are not present in current packs.\n\n2. **Gaps in current submissions**: Tasks \"task066\", \"task076\", ..., \"task387\" have gaps in their current submissions, where static-shape networks must be built from scratch.\n\n**Imported Source Analysis**\n\n1. **Kaggle imports**: Kaggle imports are V3 compliant, with minimal MACs, memory, and params.\n\n2. **Local manifests**: Local manifests are a mix of V3-compliant and V2-era files. Tasks \"task066\", \"task076\", ..., \"task387\" require updating to V3 compliance.\n\n3. **Prior lessons**: Prior lessons from V2 era can be adapted for V3, but with caution, as some techniques may not generalize well.\n\n4. **Public seed behavior**: Public seed behavior suggests that simple, tiny networks are more effective than complex ones.\n\n**Strategy Suggestions**\n\n1. **Geometric transforms**: Consider using geometric transforms instead of learned weights to solve tasks \"task066\", \"task076\", ..., \"task387\".\n\n2. **",
-            "coder": "### Candidate Experiment Branches\n\n1. **Geometric Transformations (TGT)**\n   - Implement a library of static geometric transformations.\n   - Apply these transformations to input data before feeding it into a small neural network.\n   - Focus on tasks with high deltas and validate against the V3 scorer.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports that have simple, static structures.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer before submission.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations (e.g., geometric transforms, element-wise ops).\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer before submission.\n\n### Likely Files/Scripts to Touch\n\n1. **Geometric Transformations**\n   - `geometric_transforms.py`\n   - `small_neural_network.py`\n   - `validation_script.py`\n\n2. **Teacher-Driven Static Shape Extraction**\n   - `successful_kernels.py`\n   - `static_shape_rebuild.py`\n   - `validation_script.py`\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - `minimal_onnx_graphs.py`\n   - `numpy_operations.py`\n   - `validation_script.py`\n\n### Safe Automation Steps\n\n1. **Geometric Transformations**\n   - Implement geometric transformations in `geometric_transforms.py`.\n   - Integrate these transformations into the neural network pipeline.\n   - Run a series of experiments on high-delta tasks.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations.\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer.\n\n### Top 3 Experiments to Run Next\n\n1. **Geometric Transformations on High-Delta Tasks**\n   - Focus on tasks with high deltas (e.g., `task089`, `task076`, `task133`).\n   - Implement geometric transformations and validate against the V3 scorer.\n\n2. **Teacher-Driven Static Shape Extraction**\n   - Identify successful kernels from existing imports.\n   - Manually rebuild these kernels using minimal static shapes.\n   - Validate each task against the V3 scorer.\n\n3. **Fresh Build with Minimal Static ONNX Graphs**\n   - Generate 400 minimal static ONNX graphs using simple numpy operations.\n   - Use small weight matrices and avoid dynamic shapes.\n   - Validate each task against the V3 scorer.\n\nBy following these steps, you can systematically address the gaps in your current submissions and explore new strategies to maximize score gains.",
-            "critic": "**The 3 Biggest Risks or Likely Mistakes in This NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"Replacements\" Without Deep Validation**\n\n**Risk:** The strategy assumes that simply swapping in \"validated\" sources like `submission_scored_output_sets_400` or `latest_karnak_logic_tasks` will automatically improve scores. However, **this ignores the possibility that these sources themselves are not fully validated or optimized for the V3 scorer**. The `replacements` list includes 40+ tasks, but **none of them are explicitly validated against the V3 scorer**. Swapping in untested models risks introducing new invalid shapes, dynamic operations, or non-compliant structures that could **worsen the public score**.\n\n**Mistake:** Assuming that \"imported\" or \"scored\" sources are inherently valid without re-evaluating them under the V3 metric is a dangerous assumption. This is a classic case of **relying on the \"imported\" label rather than the actual model behavior**"
+            "primary": "1. **Revalidate and Refine Existing Replacements**  \n   Focus on the 40+ task replacements in the current manifest. Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks` as validated sources. For each task, recheck if the replacement model is V3-compliant (static shapes, minimal ops). If valid, keep it; if not, replace with a simpler numpy-based solution using geometric transforms or element-wise ops.\n\n2. **Fresh Build for Missing Tasks**  \n   For the 144+ invalid base tasks in `invalid_base_tasks`, initiate a **fresh_build** mode. Generate 400 minimal networks using only numpy and basic operations (Add, Mul, Reshape). Prioritize small weight matrices, avoid dynamic shapes, and ensure all ops are static and symbolic. Validate each task against the V3 scorer before proceeding.\n\n3. **Distill Large Models into Static ONNX Graphs**  \n   Use the `imported_magmacot_5550` and `latest_k",
+            "secondary": "Okay, here's a list of NeuroGolf experimental directions, focused on minimal computational graphs and static shapes, avoiding the pitfalls of the previous dynamic-shape exploits, and prioritizing Metric V3 optimization.  I've tried to go beyond simple seed preservation and offer distinct approaches.\n\n1. **\"Task-Specific Static Feature Extractors\":** Instead of a monolithic network, build *separate*, tiny networks (e.g., 2-5 layers, <1000 params each) for each of the *invalid* base tasks (tasks 004, 012, etc.). These networks would be trained to extract a small set of *static* features (e.g., edge histograms, corner counts, simple geometric descriptors) directly from the input image.  These features are then fed into a *shared*, even smaller, classification network.  This isolates the complexity and allows for focused optimization.  The goal is to see if a minimal, handcrafted feature set can approximate what a larger, dynamic network was previously doing.\n\n2. **\"Geometric Primitive Regression\":** Many tasks involve recognizing simple geometric shapes (lines, circles, triangles).  Instead of a full network, train a regression model to directly predict the parameters of these primitives (e.g",
+            "tertiary": "Here's the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**Task Identification**\n\n1. **New V3-compliant network files**: Tasks 004, 012, 015, 016, 021, 023, 024, 025, 032, 047, 048, 050, 053, 055, 063, 067, 071, 073, 074, 077, 081, 085, 086, 088, 092, 096, 098, 099, 101, 107, 117, 120, 122, 125, 127, 129, 132, 135, 139, 141, 147, 151, 157, 160, 161, 162, 166, 168, 180, 181, 182, 183, 185, 187, 190, 192, 193, 196, 198, 199, 202, 205, 207, 212, 220, 222, 224, 225, 226, 229, 230, 231, 232, 239, 244, 253",
+            "coder": "### Candidate Experiment Branches\n\n1. **Task-Specific Static Feature Extractors**\n   - Focus on creating small, static networks for each invalid base task.\n   - Use geometric transforms and element-wise operations.\n   - Validate against the V3 scorer.\n\n2. **Geometric Primitive Regression**\n   - Train regression models to predict parameters of simple geometric shapes.\n   - Simplify network architecture to avoid dynamic shapes.\n   - Validate against the V3 scorer.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Convert large, dynamic models into static ONNX graphs.\n   - Use numpy-based solutions for minimal networks.\n   - Validate against the V3 scorer.\n\n### Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Feature Extractors**\n   - `task_specific_feature_extractors.py`\n   - `shared_classification_network.py`\n   - `utils/static_operations.py`\n\n2. **Geometric Primitive Regression**\n   - `geometric_regression_models.py`\n   - `utils/primitive_utils.py`\n   - `validation_scripts/v3_validation.py`\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - `large_model_distillation.py`\n   - `utils/onnx_conversion.py`\n   - `validation_scripts/v3_validation.py`\n\n### Safe Automation Steps\n\n1. **Revalidate and Refine Existing Replacements**\n   - Use the `submission_scored_output_sets_400` and `latest_karnak_logic_tasks`.\n   - Check for V3-compliance using static shapes and minimal ops.\n   - Replace non-compliant models with simpler numpy-based solutions.\n\n2. **Fresh Build for Missing Tasks**\n   - Initiate a `fresh_build` mode.\n   - Generate 400 minimal networks using only numpy and basic operations.\n   - Validate each task against the V3 scorer before proceeding.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Use the `imported_magmacot_5550` and `latest_konbu_5344`.\n   - Convert large models into static ONNX graphs.\n   - Validate each model against the V3 scorer.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Feature Extractors**\n   - Implement separate, tiny networks for each invalid base task.\n   - Train and validate these networks using geometric transforms and element-wise operations.\n   - Focus on optimizing for static shapes and minimal parameters.\n\n2. **Geometric Primitive Regression**\n   - Develop regression models to predict parameters of simple geometric shapes.\n   - Simplify network architecture to avoid dynamic shapes.\n   - Validate the performance against the V3 scorer.\n\n3. **Distill Large Models into Static ONNX Graphs**\n   - Convert large, dynamic models into static ONNX graphs using numpy-based solutions.\n   - Ensure all operations are static and symbolic.\n   - Validate each model against the V3 scorer to ensure compliance.\n\nBy following these steps and experimenting with different approaches, you can effectively refine and optimize your NeuroGolf automation strategy.",
+            "critic": "**The 3 Biggest Risks or Likely Mistakes in This NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"Replacements\" Without Understanding the Core Problem**\n\n**Risk:** The strategy assumes that replacing existing models (e.g., `task066`, `task076`, etc.) with new ones (like `submission_scored_output_sets_400`) will automatically improve the score. However, this is a **repetitive and risky assumption** that ignores the **fundamental issue** of why those original models failed.\n\n**Why It\u2019s a Mistake:**  \n- Many of the tasks in `invalid_base_tasks` are **structurally different** from the original models. Replacing them with similar models (e.g., `submission_scored_output_sets_400`) may not address the **underlying shape or logic constraints** of the task.\n- The **delta values** (e.g., `delta: 4.855324` for `task076`) suggest that the replacement"
           },
           "action": "scorer_blend_build",
-          "mode": "skip_known_dynamic_sanitized",
+          "mode": "skip_known_dynamic",
           "seed_label": ""
         },
-        "plan_key": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+        "plan_key": "scorer_blend_build|-|skip_known_dynamic",
         "build_manifest": {
           "files": 400,
           "known_score": 5376.667942,
@@ -23765,12 +23763,12 @@
           "median_gap_per_file": 0.267646,
           "median_abs_gap": 98.225905,
           "build_strategy": "scorer_blend",
-          "mode": "skip_known_dynamic_sanitized",
+          "mode": "skip_known_dynamic",
           "_manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_manifest.json",
           "manifest_path": "D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\\outputs\\submission_autonomous_manifest.json"
         },
-        "experiment_fingerprint": "3e4dcf537139f778",
-        "candidate_signature": "514651321de23c1f",
+        "experiment_fingerprint": "d0b97b32132a9e77",
+        "candidate_signature": "de58843905e0792b",
         "submit_result": {
           "submitted": false,
           "reason": "V3_VALIDATION_FAILED: 40 task files failed ONNX validation",
@@ -24380,7 +24378,7 @@
           "total_cycles": 51,
           "success_rate": 0.0,
           "failures": 51,
-          "latest_branch": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+          "latest_branch": "scorer_blend_build|-|skip_known_dynamic",
           "latest_reason": "v3_validation_failed: 40 task files failed onnx validation",
           "latest_files": 400,
           "latest_score": 5269.609735,
@@ -24390,7 +24388,7 @@
           "top_branches": [
             [
               "scorer_blend_build|-|skip_known_dynamic",
-              23
+              24
             ],
             [
               "direct_seed_pack|imported_konbu17_neurogolf_2026_4959_61_4_28_update_version|-",
@@ -24427,12 +24425,12 @@
               3
             ],
             [
-              "v3_validation_failed: 35 task files failed onnx validation",
-              3
+              "v3_validation_failed: 40 task files failed onnx validation",
+              2
             ],
             [
-              "v3_validation_failed: 40 task files failed onnx validation",
-              1
+              "v3_validation_failed: 35 task files failed onnx validation",
+              2
             ],
             [
               "v3_validation_failed: 140 task files failed onnx validation",
@@ -24502,16 +24500,17 @@
         "mode": "adaptive_learning",
         "analysis_summary": "Adaptive learning is steering the planner toward gradual, competition-intended progress: keep the strongest 400/400 baseline, avoid repeated seed loops, and rebuild the weakest per-task graphs first.",
         "recommendation": "Treat the latest 400/400 pack as the baseline and chase per-task graph reductions instead of restarting from raw seeds.",
-        "latest_branch": "scorer_blend_build|-|skip_known_dynamic_sanitized",
+        "latest_branch": "scorer_blend_build|-|skip_known_dynamic",
         "latest_reason": "v3_validation_failed: 40 task files failed onnx validation",
-        "latest_mode": "skip_known_dynamic_sanitized",
+        "latest_mode": "skip_known_dynamic",
         "latest_files": 400,
         "baseline_estimated_score": 5269.609735,
         "planner_hints": [
-          "Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic_sanitized at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.",
+          "Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.",
+          "Keep skip_known_dynamic as the default fresh-build mode until another validated mode beats it on score or task quality.",
           "Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.",
           "Direct imported seed packs are reference material only. Keep the loop on fresh builds, validated repair packs, or targeted per-task replacements.",
-          "The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (23 cycles). Put new effort into weaker tasks rather than replaying the same branch."
+          "The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (24 cycles). Put new effort into weaker tasks rather than replaying the same branch."
         ],
         "focus_tasks": [
           {
@@ -24569,12 +24568,12 @@
             "cost_hint": 961191
           }
         ],
-        "operator_note": "Adaptive guidance:\n- Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic_sanitized at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.\n- Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.\n- Direct imported seed packs are reference material only. Keep the loop on fresh builds, validated repair packs, or targeted per-task replacements.\n- The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (23 cycles). Put new effort into weaker tasks rather than replaying the same branch.\n- Weakest current tasks to rebuild first: task157 (9.76, artem_blend_new), task048 (10.43, artem_blend_new), task025 (10.72, latest_amanatar_optimal), task340 (10.96, artem_blend_new), task125 (11.18, artem_blend_new), task077 (11.22, latest_konbu_5344)."
+        "operator_note": "Adaptive guidance:\n- Current 400/400 baseline is scorer_blend_build|-|skip_known_dynamic at an estimated local score of 5269.61; improve from that pack instead of resetting to seed-only submissions.\n- Keep skip_known_dynamic as the default fresh-build mode until another validated mode beats it on score or task quality.\n- Profile-only scorer blends are the current intended baseline; do not drop back to strict-known unless validation or score evidence improves.\n- Direct imported seed packs are reference material only. Keep the loop on fresh builds, validated repair packs, or targeted per-task replacements.\n- The dominant recent branch is scorer_blend_build|-|skip_known_dynamic (24 cycles). Put new effort into weaker tasks rather than replaying the same branch.\n- Weakest current tasks to rebuild first: task157 (9.76, artem_blend_new), task048 (10.43, artem_blend_new), task025 (10.72, latest_amanatar_optimal), task340 (10.96, artem_blend_new), task125 (11.18, artem_blend_new), task077 (11.22, latest_konbu_5344)."
       }
     },
-    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_135843.json"
+    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_140843.json"
   },
-  "last_seen_at": "2026-05-06T14:08:27Z",
+  "last_seen_at": "2026-05-06T14:08:46Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
