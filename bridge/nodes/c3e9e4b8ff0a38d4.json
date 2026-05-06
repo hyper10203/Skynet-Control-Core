@@ -12,7 +12,7 @@
     "pid": null,
     "status_updated_at": "2026-05-06T19:05:14Z",
     "status_stale": false,
-    "status_age_seconds": 317.976378
+    "status_age_seconds": 336.662382
   },
   "phase": "idle",
   "message": "Cycle complete",
@@ -1334,7 +1334,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_190514.json"
   },
-  "last_seen_at": "2026-05-06T19:10:31Z",
+  "last_seen_at": "2026-05-06T19:10:50Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
