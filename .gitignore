@@ -1,12 +1,24 @@
 __pycache__/
 *.pyc
+*.backup.*
 .venv/
+.local/
 .env
+archive/
 data/neurogolf-2026/
 memory/neurogolf_state.json
 memory/operator_note.txt
+memory/distillation_plan.json
+memory/seed_controls.json
 outputs/neurogolf/
+outputs/runtime_node_bridge/
+outputs/distillation/
 outputs/generated/
 outputs/reports/
 outputs/submission_state.json
+outputs/*.log
+kaggle/skynet-distill-student/
+kaggle/skynet-distill-data/
+kaggle/axiomgraph-distill-student/
+kaggle/axiomgraph-distill-data/
 run_dashboard - Shortcut.lnk

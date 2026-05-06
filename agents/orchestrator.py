@@ -5,7 +5,7 @@ import re
 
 from core.arc_loader import serialize_task
 from core.config import MODEL_OPTIONS, MODEL_REGISTRY, PREFER_DIRECT_ORCHESTRATION
-from core.executor import ask
+from core.executor import ask_with_fallback
 from core.prompts import ORCHESTRATOR_SYSTEM_PROMPT
 
 
@@ -55,7 +55,7 @@ def _as_bool(value: object, default: bool) -> bool:
 
 
 def build_plan(task: dict, memory_context: list[dict], critique_rounds: int = 3) -> dict:
-    raw = ask(
+    raw = ask_with_fallback(
         MODEL_REGISTRY["orchestrator"],
         f"""You are the top-level ARC orchestrator. The user talks only to you.
 
@@ -88,6 +88,7 @@ Rules:
 """,
         system=ORCHESTRATOR_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["orchestrator"],
+        fallback_models=[MODEL_REGISTRY["operator_fast"], MODEL_REGISTRY["reasoning_secondary"]],
     )
     parsed = _extract_json_object(raw)
     direct_reasoning = str(parsed.get("direct_reasoning", "")).strip()
@@ -129,7 +130,7 @@ def synthesize_reasoning(
     secondary_reasoning: str = "",
     tertiary_reasoning: str = "",
 ) -> str:
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["orchestrator"],
         f"""You are finalizing the reasoning for one ARC task.
 
@@ -159,11 +160,12 @@ Merge complementary evidence from all useful voices. Make it exact, concise, and
 """,
         system=ORCHESTRATOR_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["orchestrator"],
+        fallback_models=[MODEL_REGISTRY["operator_fast"], MODEL_REGISTRY["reasoning_secondary"]],
     )
 
 
 def refine_reasoning(task: dict, current_reasoning: str, critique: str) -> str:
-    return ask(
+    return ask_with_fallback(
         MODEL_REGISTRY["orchestrator"],
         f"""Revise the ARC reasoning after critique.
 
@@ -180,4 +182,5 @@ Return a corrected reasoning only.
 """,
         system=ORCHESTRATOR_SYSTEM_PROMPT,
         options=MODEL_OPTIONS["orchestrator"],
+        fallback_models=[MODEL_REGISTRY["operator_fast"], MODEL_REGISTRY["reasoning_secondary"]],
     )

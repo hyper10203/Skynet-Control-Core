@@ -6,7 +6,7 @@ This project is best deployed as a self-hosted dashboard with:
 
 - a running Ollama server
 - access to your NeuroGolf workspace
-- optional Kaggle credentials for source harvesting and submissions
+- optional Kaggle credentials for source intake and submissions
 
 The GUI can run in a container, but the model server and competition workspace are usually external resources.
 
@@ -84,7 +84,15 @@ Limitations:
 - no real NeuroGolf workspace mount
 - no practical autonomous submission loop
 
-So Streamlit Cloud is useful for a preview UI, not for the full agent system.
+So Streamlit Cloud is useful for a branded portal, observer UI, and light control surface, not for the full heavy local agent runtime.
+
+For the current repo state, deploy with:
+
+- repository: `hyper10203/Skynet-Control-Core`
+- branch: `codex/skynet-neurogolf-core-distillation`
+- entrypoint: `streamlit_app.py`
+
+The dashboard now includes a built-in portal fallback, so the cloud app still presents the landing and command surface even when the separate local website on port `4173` is unavailable.
 
 ## Render / Railway
 

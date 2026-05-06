@@ -15,6 +15,7 @@ import sys
 
 from core.config import (
     KAGGLE_COMPETITION,
+    KAGGLE_POLL_INITIAL_SECONDS,
     KAGGLE_POLL_ATTEMPTS,
     KAGGLE_POLL_SECONDS,
     KAGGLE_SUBMISSION_FILE,
@@ -22,6 +23,7 @@ from core.config import (
     SUBMISSION_MIN_DELTA,
     SUBMISSION_STATE_PATH,
 )
+from utils.submission_validation import validate_submission_zip, write_validation_report
 
 try:
     from kaggle.api.kaggle_api_extended import KaggleApi
@@ -37,10 +39,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--estimated-score", type=float, default=None)
     parser.add_argument("--estimate-file", type=Path, default=None)
     parser.add_argument("--threshold", type=float, default=SUBMISSION_MIN_DELTA)
+    parser.add_argument("--initial-wait-seconds", type=int, default=KAGGLE_POLL_INITIAL_SECONDS)
     parser.add_argument("--poll-seconds", type=int, default=KAGGLE_POLL_SECONDS)
     parser.add_argument("--poll-attempts", type=int, default=KAGGLE_POLL_ATTEMPTS)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--skip-local-validation", action="store_true")
     return parser
 
 
@@ -133,11 +137,11 @@ def submission_history(api: KaggleApi, competition: str, limit: int = 10) -> lis
         return []
     lines = [line for line in completed.stdout.splitlines() if line.strip() and not line.startswith("Warning:")]
     if not lines:
-        return rows
+        return []
     reader = csv.reader(lines)
     header = next(reader, None)
     if not header:
-        return rows
+        return []
     cli_rows: list[dict] = []
     for parts in reader:
         if len(parts) < 6:
@@ -179,8 +183,18 @@ def _exception_details(exc: Exception) -> str:
 def main() -> int:
     args = build_parser().parse_args()
     submission_file = args.file.resolve()
-    if not submission_file.exists() and not args.dry_run:
+    if not submission_file.exists():
         raise SystemExit(f"Submission file not found: {submission_file}")
+
+    if not args.skip_local_validation:
+        validation = validate_submission_zip(submission_file)
+        validation_path = submission_file.with_name(f"{submission_file.stem}_local_validation.json")
+        write_validation_report(validation, validation_path)
+        if not validation["valid"]:
+            errors = "; ".join(validation.get("errors", []))
+            raise SystemExit(
+                f"Local NeuroGolf validation failed: {errors}. Report: {validation_path}"
+            )
 
     estimated_score = resolve_estimated_score(args)
     state = load_state()
@@ -204,6 +218,8 @@ def main() -> int:
     )
 
     if args.dry_run:
+        if not args.skip_local_validation:
+            print(f"Local validation passed. Report: {validation_path}")
         print(f"Would submit {submission_file} to {args.competition} with message: {message}")
         return 0
 
@@ -234,9 +250,15 @@ def main() -> int:
                 stderr = completed.stderr.strip() if completed.stderr else "unknown Kaggle CLI error"
                 raise SystemExit(f"Kaggle submit failed: {stderr}") from exc
 
+    initial_wait = max(0, int(args.initial_wait_seconds))
+    if initial_wait > 0:
+        print(f"Waiting {initial_wait} seconds before first submission status check...")
+        time.sleep(initial_wait)
+
     current = None
     for attempt in range(args.poll_attempts):
-        time.sleep(args.poll_seconds)
+        if attempt > 0:
+            time.sleep(args.poll_seconds)
         current = latest_submission(api, args.competition)
         if current is None:
             continue

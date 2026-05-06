@@ -6,10 +6,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(PROJECT_ROOT / ".env", override=False)
+# Always let the saved local control-center settings win over any stale shell
+# variables from old sessions or background launchers.
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 REQUEST_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "600"))
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
+OLLAMA_MODEL_DIR = os.getenv("OLLAMA_MODEL_DIR", "").strip()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -92,6 +96,7 @@ KAGGLE_COMPETITION = os.getenv("ARC_KAGGLE_COMPETITION", "neurogolf-2026")
 KAGGLE_SUBMISSION_FILE = Path(os.getenv("ARC_KAGGLE_SUBMISSION_FILE", str(PROJECT_ROOT / "outputs" / "submission.zip")))
 SUBMISSION_STATE_PATH = Path(os.getenv("ARC_SUBMISSION_STATE_PATH", str(PROJECT_ROOT / "outputs" / "submission_state.json")))
 SUBMISSION_MIN_DELTA = _env_float("ARC_SUBMISSION_MIN_DELTA", 250.0)
+KAGGLE_POLL_INITIAL_SECONDS = _env_int("ARC_KAGGLE_POLL_INITIAL_SECONDS", 240)
 KAGGLE_POLL_SECONDS = _env_int("ARC_KAGGLE_POLL_SECONDS", 60)
 KAGGLE_POLL_ATTEMPTS = _env_int("ARC_KAGGLE_POLL_ATTEMPTS", 45)
 
@@ -120,12 +125,18 @@ NEUROGOLF_AUTONOMY_REPORTS_DIR = _env_path(
     "NEUROGOLF_AUTONOMY_REPORTS_DIR",
     PROJECT_ROOT / "outputs" / "neurogolf",
 )
-NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD = _env_float("NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD", 40.0)
+NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD = _env_float("NEUROGOLF_AUTONOMY_LOCAL_DELTA_THRESHOLD", 0.0)
 NEUROGOLF_AUTONOMY_MAX_HISTORY = _env_int("NEUROGOLF_AUTONOMY_MAX_HISTORY", 10)
 NEUROGOLF_AUTONOMY_LOOP_SECONDS = _env_int("NEUROGOLF_AUTONOMY_LOOP_SECONDS", 1800)
 NEUROGOLF_AUTONOMY_MAX_PENDING_SUBMISSIONS = _env_int("NEUROGOLF_AUTONOMY_MAX_PENDING_SUBMISSIONS", 1)
 NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT = os.getenv("NEUROGOLF_AUTONOMY_ALLOW_SUBMIT_DEFAULT", "1").strip().lower() not in {"0", "false", "no"}
 NEUROGOLF_AUTONOMY_RECENT_REPORT_LIMIT = _env_int("NEUROGOLF_AUTONOMY_RECENT_REPORT_LIMIT", 50)
+NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS = _env_int("NEUROGOLF_AUTONOMY_BUILD_TIMEOUT_SECONDS", 1800)
+NEUROGOLF_AUTONOMY_FRESH_BUILD_MODE = os.getenv("NEUROGOLF_AUTONOMY_FRESH_BUILD_MODE", "skip_known_dynamic").strip() or "skip_known_dynamic"
+# Legacy target/streak knobs remain for compatibility, but the active policy is:
+# submit any valid pack that credibly improves the best known public score.
+NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE = _env_float("NEUROGOLF_AUTONOMY_TARGET_PUBLIC_SCORE", 0.0)  # 0 = disabled
+NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS = _env_int("NEUROGOLF_AUTONOMY_TARGET_CONSECUTIVE_BESTS", 0)  # 0 = disabled
 NEUROGOLF_AUTONOMY_LOG_PATH = _env_path(
     "NEUROGOLF_AUTONOMY_LOG_PATH",
     NEUROGOLF_AUTONOMY_REPORTS_DIR / "daemon.log",
@@ -141,4 +152,70 @@ NEUROGOLF_AUTONOMY_PID_PATH = _env_path(
 NEUROGOLF_OPERATOR_NOTE_PATH = _env_path(
     "NEUROGOLF_OPERATOR_NOTE_PATH",
     PROJECT_ROOT / "memory" / "operator_note.txt",
+)
+NEUROGOLF_OPERATOR_AUTO_NOTE_PATH = _env_path(
+    "NEUROGOLF_OPERATOR_AUTO_NOTE_PATH",
+    NEUROGOLF_AUTONOMY_REPORTS_DIR / "operator_note_auto.txt",
+)
+NEUROGOLF_SEED_CONTROLS_PATH = _env_path(
+    "NEUROGOLF_SEED_CONTROLS_PATH",
+    PROJECT_ROOT / "memory" / "seed_controls.json",
+)
+SKYNET_ARCHIVE_DIR = _env_path(
+    "SKYNET_ARCHIVE_DIR",
+    PROJECT_ROOT / "archive" / "axiomgraph_maintenance",
+)
+SKYNET_DISTILLATION_PLAN_PATH = _env_path(
+    "SKYNET_DISTILLATION_PLAN_PATH",
+    PROJECT_ROOT / "memory" / "distillation_plan.json",
+)
+AXIOMGRAPH_LOCAL_DIR = _env_path(
+    "AXIOMGRAPH_LOCAL_DIR",
+    PROJECT_ROOT / ".local",
+)
+KAGGLE_CONFIG_DIR = _env_path(
+    "KAGGLE_CONFIG_DIR",
+    AXIOMGRAPH_LOCAL_DIR / "kaggle",
+)
+AXIOMGRAPH_RUNTIME_NODE_STATE_PATH = _env_path(
+    "AXIOMGRAPH_RUNTIME_NODE_STATE_PATH",
+    AXIOMGRAPH_LOCAL_DIR / "runtime_node.json",
+)
+AXIOMGRAPH_REMOTE_CONTROL_URL = os.getenv(
+    "AXIOMGRAPH_REMOTE_CONTROL_URL",
+    "https://axiomgraph-operations-core.streamlit.app",
+).strip()
+AXIOMGRAPH_NODE_LABEL = os.getenv(
+    "AXIOMGRAPH_NODE_LABEL",
+    os.getenv("COMPUTERNAME", "AxiomGraph Runtime Node"),
+).strip()
+AXIOMGRAPH_BRIDGE_REPO = os.getenv(
+    "AXIOMGRAPH_BRIDGE_REPO",
+    "hyper10203/Skynet-Control-Core",
+).strip()
+AXIOMGRAPH_BRIDGE_BRANCH = os.getenv(
+    "AXIOMGRAPH_BRIDGE_BRANCH",
+    "runtime-node-bridge",
+).strip()
+AXIOMGRAPH_BRIDGE_ROOT = os.getenv(
+    "AXIOMGRAPH_BRIDGE_ROOT",
+    "bridge",
+).strip()
+AXIOMGRAPH_BRIDGE_GITHUB_TOKEN = os.getenv("AXIOMGRAPH_BRIDGE_GITHUB_TOKEN", "").strip()
+AXIOMGRAPH_BRIDGE_LOOP_SECONDS = _env_int("AXIOMGRAPH_BRIDGE_LOOP_SECONDS", 90)
+AXIOMGRAPH_BRIDGE_REPORTS_DIR = _env_path(
+    "AXIOMGRAPH_BRIDGE_REPORTS_DIR",
+    PROJECT_ROOT / "outputs" / "runtime_node_bridge",
+)
+AXIOMGRAPH_BRIDGE_STATUS_PATH = _env_path(
+    "AXIOMGRAPH_BRIDGE_STATUS_PATH",
+    AXIOMGRAPH_BRIDGE_REPORTS_DIR / "status.json",
+)
+AXIOMGRAPH_BRIDGE_LOG_PATH = _env_path(
+    "AXIOMGRAPH_BRIDGE_LOG_PATH",
+    AXIOMGRAPH_BRIDGE_REPORTS_DIR / "bridge.log",
+)
+AXIOMGRAPH_BRIDGE_PID_PATH = _env_path(
+    "AXIOMGRAPH_BRIDGE_PID_PATH",
+    AXIOMGRAPH_BRIDGE_REPORTS_DIR / "bridge.pid",
 )

@@ -1,11 +1,11 @@
-# Skynet Control Core
+# AxiomGraph Operations Core
 
 <p align="center">
-  <img src="assets/skynet-control-core-banner.svg" alt="Skynet Control Core banner" width="100%" />
+  <img src="assets/axiomgraph-operations-core-banner.svg" alt="AxiomGraph Operations Core banner" width="100%" />
 </p>
 
 <p align="center">
-  <strong>Local-first ARC and NeuroGolf orchestration with Ollama, Kaggle automation, and a live sci-fi control center.</strong>
+  <strong>Local-first ARC and NeuroGolf orchestration with Ollama, Kaggle automation, and a professional operations console.</strong>
 </p>
 
 <p align="center">
@@ -23,12 +23,12 @@
 
 ## What This Is
 
-Skynet Control Core is a local AI operations stack for:
+AxiomGraph Operations Core is a local AI operations stack for:
 
 - ARC-style symbolic reasoning
 - NeuroGolf submission optimization
 - multi-model orchestration through Ollama
-- Kaggle source harvesting and score-aware submission workflows
+- Kaggle source intake and score-aware submission workflows
 - live monitoring through a Streamlit GUI
 
 You talk to one front-door system. It decides when to keep work local and when to wake specialist models.
@@ -55,12 +55,41 @@ This repo is built to be a proper control surface:
 - Model-role editor with profile loading, installed-model detection, and context auto-fill
 - Direct orchestrator chat plus a separate fast operator chat lane
 - `.env`-backed runtime settings so loop timing and submission controls stay stable across restarts
+- Runtime Node tab for local-only Kaggle auth, Ollama/model paths, pairing code rotation, and installed-engine health checks
+
+## Runtime Split
+
+The system is now moving toward a two-part shape:
+
+- **AxiomGraph Runtime Node**: the installed local engine that owns Kaggle auth, Ollama, local model paths, the NeuroGolf workspace, daemon execution, and submissions
+- **AxiomGraph Control Center**: the remote-facing website and hosted portal that owns landing/login/device views, telemetry, command history, and operator control
+
+This keeps the powerful parts local while still giving you a clean remote surface.
+
+### First bridge implementation
+
+The first remote-control bridge uses a dedicated GitHub branch as a transport layer:
+
+- the local Runtime Node publishes heartbeat JSON to `runtime-node-bridge`
+- the hosted Control Center reads node heartbeats from that branch
+- the hosted Control Center can queue JSON commands back to each node
+- the local node polls outward, executes allowed commands, and acknowledges the result
+
+That gives us outbound-only remote control without exposing your laptop directly to the internet.
+
+The local Runtime Node can also keep a small bridge loop running in the background. That loop publishes fresh heartbeats, polls for remote commands, and lets the hosted Control Center steer the machine even when the Streamlit dashboard is closed.
+
+For day-to-day local use, start the full machine-facing surface with:
+
+- `start_runtime_node.ps1` for the dashboard + bridge
+- `start_runtime_node.ps1 -StartAutonomy -AllowSubmit` when you want the local solver loop live immediately
+- `stop_runtime_node.ps1` to stop the dashboard, bridge, and local daemon together
 
 ## System Layout
 
 ```mermaid
 flowchart LR
-    User["Operator"] --> GUI["Skynet Control Core GUI"]
+    User["Operator"] --> GUI["AxiomGraph Operations Core GUI"]
     GUI --> Orch["Orchestrator"]
     GUI --> Fast["Fast Operator Link"]
     Orch --> R1["Primary Reasoner"]
@@ -152,7 +181,7 @@ For remote control from other devices:
 The control center includes:
 
 - live daemon and telemetry overview
-- flight-deck controls for starting, stopping, syncing, and running cycles
+- operations controls for starting, stopping, syncing, and running cycles
 - model profile management
 - NeuroGolf leaderboard and submission state
 - ARC visualizer
