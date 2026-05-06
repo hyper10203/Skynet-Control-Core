@@ -9,14 +9,14 @@
     "pid": 18444,
     "created_at": "2026-05-06T16:05:28",
     "cpu_percent": 0.0,
-    "memory_mb": 0.6,
+    "memory_mb": 0.4,
     "status": "running",
-    "status_updated_at": "2026-05-06T11:27:32Z",
+    "status_updated_at": "2026-05-06T11:31:57Z",
     "status_stale": false,
-    "status_age_seconds": 257.330562
+    "status_age_seconds": 11.280901
   },
   "phase": "reasoning",
-  "message": "Querying reasoning_primary: mistral:7b-text-fp16",
+  "message": "Querying reasoning_secondary: gemma3:12b",
   "progress": 0.2,
   "best_completed_public_score": null,
   "latest_completed_public_score": null,
@@ -23501,7 +23501,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_112602.json"
   },
-  "last_seen_at": "2026-05-06T11:31:49Z",
+  "last_seen_at": "2026-05-06T11:32:08Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
