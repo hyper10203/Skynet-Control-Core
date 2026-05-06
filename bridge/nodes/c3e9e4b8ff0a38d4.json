@@ -11,13 +11,13 @@
     "cpu_percent": 0.0,
     "memory_mb": 0.0,
     "status": "running",
-    "status_updated_at": "2026-05-06T12:53:45Z",
+    "status_updated_at": "2026-05-06T12:53:53Z",
     "status_stale": false,
-    "status_age_seconds": 2.488525
+    "status_age_seconds": 13.92557
   },
-  "phase": "building",
-  "message": "Reusing cached open blend (static replacement blend)",
-  "progress": 0.84,
+  "phase": "idle",
+  "message": "Cycle complete",
+  "progress": 1.0,
   "best_completed_public_score": null,
   "latest_completed_public_score": null,
   "pending_submission_count": 0,
@@ -1123,20 +1123,20 @@
     "goal_reached": true
   },
   "latest_report": {
-    "started_at": "2026-05-06T12:48:48Z",
+    "started_at": "2026-05-06T12:53:45Z",
     "plan": {
       "target": "",
       "variant_hint": "skip_known_dynamic",
       "should_submit": true,
-      "rationale": "Build minimal static-shape networks for all 400 tasks, focusing on V3 compliance and task-specific optimization. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
-      "submission_message": "Constructing fresh static-shape networks for all 400 tasks with V3 compliance.",
-      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static-shape networks for all 400 tasks, focusing on V3 compliance and task-specific optimization.\",\n  \"submission_message\": \"Constructing fresh static-shape networks for all 400 tasks with V3 compliance.\"\n}",
+      "rationale": "Build minimal static-shape networks for all 400 tasks using fresh construction to ensure V3 compliance and avoid dynamic-shape exploits. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
+      "submission_message": "Constructing minimal static-shape networks for all 400 tasks with strict V3 compliance.",
+      "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static-shape networks for all 400 tasks using fresh construction to ensure V3 compliance and avoid dynamic-shape exploits.\",\n  \"submission_message\": \"Constructing minimal static-shape networks for all 400 tasks with strict V3 compliance.\"\n}",
       "team_strategy": {
-        "primary": "1) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points.\n\n2) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points, but with no dynamic shapes or symbolic dimensions.\n\n3) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points, with only constant values.",
-        "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focused on minimal computational graphs and static shapes, directly addressing the new constraints and avoiding seed preservation strategies.  I've prioritized ideas that explore different avenues beyond simply tweaking the existing seed.  Each idea includes a risk/reward assessment.\n\n1. **Task-Specific Static Shape Optimization (Low Risk, Medium Reward):**\n   * **Concept:** Identify a subset of the 114 invalid base tasks (e.g., task004, task012) and create *completely new*, small, static-shape networks tailored *only* to those tasks.  Forget the seed's overall architecture; focus on the individual task's logic.\n   * **Implementation:**  Start with a single layer of a simple operation (e.g., a convolution, a matrix multiplication) and iteratively add layers *only* if they demonstrably improve performance on the target task.  Strictly enforce MACs, memory, and parameter limits.\n   * **Rationale:**  The seed's architecture is likely over-engineered for many tasks. A targeted, minimal approach might find surprisingly effective solutions.\n   * **Metric Focus:** Directly minimize MACs, memory, and parameters *while* maximizing",
-        "tertiary": "Here is the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**New V3-compliant network files needed:**\n\n1. Task 004 (invalid base count: 114)\n2. Task 012\n3. Task 015\n4. Task 016\n5. Task 021\n6. Task 023\n7. Task 024\n8. Task 025\n9. Task 032\n10. Task 047\n\n**Gaps in current submissions where static-shape networks must be built from scratch:**\n\n1. Tasks 066, 076, and 080 (replacements)\n2. Tasks 110 and 133 (delta_sum_local > 0.5)\n3. Tasks 159, 170, and 173 (delta_sum_local > 0.4)\n\n**Combining Kaggle imports, local manifests, prior lessons, and public seed behavior:**\n\n1. Review V3-compliant sources in Kaggle imports\n2. Analyze local manifest files for potential gaps\n3. Study prior lessons on efficient network construction\n4. Inspect public seed behavior for insights\n\n**Identifying invalid V2-era files:**\n\n1. Tasks 004, 012, and others (invalid base count > 0",
-        "coder": "### Candidate Experiment Branches\n\n1. **Task-Specific Static Shape Optimization**\n   - Focus on optimizing individual tasks (e.g., task004, task012) with minimal computational graphs and static shapes.\n   - Implement new networks tailored for each task.\n\n2. **Resource Fusion and Efficiency**\n   - Combine Kaggle imports, local manifests, prior lessons, and public seed behavior to identify gaps in submissions.\n   - Build static-shape networks from scratch for identified tasks.\n\n3. **Dynamic Shape Exploration with Constraints**\n   - Explore dynamic shapes while strictly adhering to MACs, memory, and parameter limits.\n   - Use the 9538 exploit to build new seeds that score at least 6285.95 public points without dynamic shapes or symbolic dimensions.\n\n### Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Shape Optimization**\n   - `task_optimizer.py`\n   - `network_builder.py`\n   - `performance_evaluator.py`\n\n2. **Resource Fusion and Efficiency**\n   - `manifest_analyzer.py`\n   - `gap_identifier.py`\n   - `fusion_strategy.py`\n\n3. **Dynamic Shape Exploration with Constraints**\n   - `dynamic_shape_explore.py`\n   - `constraint_enforcer.py`\n   - `exploit_9538.py`\n\n### Safe Automation Steps\n\n1. **Task-Specific Static Shape Optimization**\n   - Automate the creation of new networks for each task using predefined templates.\n   - Implement a performance evaluation loop to ensure the new networks meet the required score.\n\n2. **Resource Fusion and Efficiency**\n   - Automate the analysis of local manifests and Kaggle imports to identify gaps.\n   - Implement a fusion strategy to combine resources efficiently.\n\n3. **Dynamic Shape Exploration with Constraints**\n   - Automate the exploration of dynamic shapes while enforcing constraints.\n   - Use the 9538 exploit to build new seeds that meet the required score.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Shape Optimization for Task004**\n   - Implement a new network tailored for task004 with minimal computational graphs and static shapes.\n   - Evaluate performance and adjust as needed.\n\n2. **Resource Fusion and Efficiency Gap Analysis**\n   - Analyze local manifests and Kaggle imports to identify gaps in submissions.\n   - Develop a fusion strategy to address these gaps.\n\n3. **Dynamic Shape Exploration for Task066 with Constraints**\n   - Explore dynamic shapes for task066 while strictly adhering to MACs, memory, and parameter limits.\n   - Use the 9538 exploit to build a new seed that scores at least 6285.95 public points.\n\nBy following these steps and focusing on the top experiments, you can systematically improve NeuroGolf performance while adhering to the new constraints.",
-        "critic": "**The 3 Biggest Risks or Likely Mistakes in the NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"9538 Exploit\" as a One-Size-Fits-All Solution**\n\n**Risk:** The repeated use of the \"9538 exploit\" as the primary strategy across multiple experiment branches is a **risky assumption**. This suggests a lack of exploration into **task-specific optimizations** and **domain-specific constraints**. The 9538 exploit may have worked for the original seed, but it's **not guaranteed to generalize** across all 400 tasks, especially the 114 invalid base tasks. \n\n**Mistake:** Assuming that the same exploit can be applied to all tasks without understanding their unique requirements (e.g., static shapes, symbolic dimensions, or dynamic constraints) is a **repetitive and risky experiment choice**. It ignores the **diverse nature of the tasks** and the **need for tailored solutions**.\n\n---\n\n### **2. Ignoring the 1"
+        "primary": "}",
+        "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focusing on static-shape networks, minimal computational graphs, and avoiding the pitfalls of the previous dynamic-shape exploits. I've prioritized ideas that are distinct from simply preserving the existing seed.  Each idea includes a risk/reward assessment.\n\n1. **Task-Specific Static Linear Classifiers (Low Risk, Medium Reward):**\n    * **Concept:** For each of the 114 invalid base tasks, build a *single-layer* linear classifier.  No hidden layers. Use a small, fixed number of features (e.g., 32).  The goal isn't to perfectly solve the task, but to produce *valid* output within the V3 constraints.  This acts as a \"placeholder\" for a more complex solution later.\n    * **Rationale:**  Guaranteed static shape, minimal MACs/params.  Easy to implement.  Provides a baseline score and identifies tasks where more complex solutions might be needed.\n    * **V3 Compliance:** Extremely high.\n    * **Computational Graph Size:** Tiny - mostly matrix multiplications.\n    * **Risk:** Low.  Likely to produce low scores initially, but avoids invalid submissions.\n    * **",
+        "tertiary": "Here is the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**V3-compliant network files needed:**\n\n1. Task004 (invalid in current packs)\n2. Task012 (invalid in current packs)\n3. Task015 (invalid in current packs)\n4. ... (and so on, up to 9538)\n\nThese tasks need new V3-compliant network files built from scratch.\n\n**Gaps in current submissions:**\n\n1. Tasks 066-070 (missing static-shape networks)\n2. Tasks 076-080 (missing static-shape networks)\n3. Tasks 089-093 (missing static-shape networks)\n4. ... (and so on, up to 9538)\n\nThese gaps need to be filled with new V3-compliant network files.\n\n**Kaggle imports and local manifests:**\n\n1. Import Kaggle datasets for tasks that are missing V3-compliant files.\n2. Use local manifests to identify which imported sources are V3 compliant vs invalid V2-era files.\n3. Combine public seed behavior with prior lessons to inform new network builds.\n\n**Efficiency focus:**\n\n1. Minimize MACs by using geometric transforms instead of learned weights (inspired by the 9538 exploit).\n2. Opt",
+        "coder": "### Candidate Experiment Branches and Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Linear Classifiers**\n   - **Files/Scripts:** `task_specific_linear_classifiers.py`, `utils.py`\n   - **Safe Automation Steps:**\n     - Load the list of invalid base tasks.\n     - For each task, create a single-layer linear classifier with 32 features.\n     - Save the classifiers to disk in V3-compliant format.\n\n2. **Resource Fusion and Efficiency Focus**\n   - **Files/Scripts:** `resource_fusion.py`, `network_builder.py`\n   - **Safe Automation Steps:**\n     - Import Kaggle datasets for tasks missing V3-compliant files.\n     - Use local manifests to identify valid and invalid files.\n     - Combine public seed behavior with prior lessons to build new network files.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Linear Classifiers**\n   - **Rationale:** This experiment provides a baseline score and identifies tasks that require more complex solutions, ensuring that all submissions are valid.\n   - **Files/Scripts:** `task_specific_linear_classifiers.py`, `utils.py`\n\n2. **Resource Fusion and Efficiency Focus**\n   - **Rationale:** Filling gaps in current submissions with new V3-compliant network files improves overall performance while focusing on efficiency.\n   - **Files/Scripts:** `resource_fusion.py`, `network_builder.py`\n\n3. **Patch Check for Invalid Base Tasks**\n   - **Rationale:** This experiment ensures that all invalid base tasks are addressed, providing a comprehensive solution to the current issues.\n   - **Files/Scripts:** `patch_invalid_base_tasks.py`, `utils.py`",
+        "critic": "The NeuroGolf strategy bundle you've presented is a mix of **partial insights**, **repetitive experiment choices**, and **risky assumptions**\u2014all of which are problematic in the context of a competitive, constraint-driven environment like NeuroGolf. Below is a **critique of the three biggest risks or likely mistakes** in the strategy bundle, with a focus on **avoiding the pitfalls of the current approach** and **identifying the most dangerous assumptions**.\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Patch Checks\" and \"Baseline Classifiers\" (Repetitive, Low-Value Experiments)**\n\n**Issue:**  \nThe strategy bundle is heavily focused on **patching invalid base tasks** with **task-specific static linear classifiers** and **resource fusion**. While these are technically valid V3-compliant approaches, they are **not novel** and **lack strategic depth**. This is a **repetitive experiment choice** that fails to address the **core challenge** of NeuroGolf: **maximizing score while minimizing computational"
       },
       "action": "scorer_blend_build",
       "mode": "skip_known_dynamic",
@@ -1183,7 +1183,7 @@
       "blocked_branches": [],
       "recent_streak": {
         "key": "scorer_blend_build|-|skip_known_dynamic",
-        "count": 17
+        "count": 18
       },
       "submitted_fingerprints": [],
       "seen_candidate_signatures": [
@@ -1204,14 +1204,13 @@
         "b831b81956f77934",
         "d98825a9afc7159d",
         "dd387bb9c9b35c5e",
-        "de58843905e0792b",
         "e31ec3e91898d10f",
         "e667213a32f0c3b7",
         "ea095a114d6564e4",
         "fc9e2edd12205c78"
       ],
       "recommendations": [
-        "Break the repeated branch streak: scorer_blend_build|-|skip_known_dynamic appeared 17 times in a row."
+        "Break the repeated branch streak: scorer_blend_build|-|skip_known_dynamic appeared 18 times in a row."
       ]
     },
     "build_manifest": {
@@ -12249,15 +12248,15 @@
           "target": "",
           "variant_hint": "skip_known_dynamic",
           "should_submit": true,
-          "rationale": "Build minimal static-shape networks for all 400 tasks, focusing on V3 compliance and task-specific optimization. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
-          "submission_message": "Constructing fresh static-shape networks for all 400 tasks with V3 compliance.",
-          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static-shape networks for all 400 tasks, focusing on V3 compliance and task-specific optimization.\",\n  \"submission_message\": \"Constructing fresh static-shape networks for all 400 tasks with V3 compliance.\"\n}",
+          "rationale": "Build minimal static-shape networks for all 400 tasks using fresh construction to ensure V3 compliance and avoid dynamic-shape exploits. | auto-submit policy: no completed public score exists yet; candidate proxy is 5269.61",
+          "submission_message": "Constructing minimal static-shape networks for all 400 tasks with strict V3 compliance.",
+          "raw_plan": "{\n  \"experiment_type\": \"fresh_build\",\n  \"target\": \"\",\n  \"variant_hint\": \"strict\",\n  \"should_submit\": false,\n  \"rationale\": \"Build minimal static-shape networks for all 400 tasks using fresh construction to ensure V3 compliance and avoid dynamic-shape exploits.\",\n  \"submission_message\": \"Constructing minimal static-shape networks for all 400 tasks with strict V3 compliance.\"\n}",
           "team_strategy": {
-            "primary": "1) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points.\n\n2) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points, but with no dynamic shapes or symbolic dimensions.\n\n3) Use the 9538 exploit to build a new seed with 400 tasks that score at least 6285.95 public points, with only constant values.",
-            "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focused on minimal computational graphs and static shapes, directly addressing the new constraints and avoiding seed preservation strategies.  I've prioritized ideas that explore different avenues beyond simply tweaking the existing seed.  Each idea includes a risk/reward assessment.\n\n1. **Task-Specific Static Shape Optimization (Low Risk, Medium Reward):**\n   * **Concept:** Identify a subset of the 114 invalid base tasks (e.g., task004, task012) and create *completely new*, small, static-shape networks tailored *only* to those tasks.  Forget the seed's overall architecture; focus on the individual task's logic.\n   * **Implementation:**  Start with a single layer of a simple operation (e.g., a convolution, a matrix multiplication) and iteratively add layers *only* if they demonstrably improve performance on the target task.  Strictly enforce MACs, memory, and parameter limits.\n   * **Rationale:**  The seed's architecture is likely over-engineered for many tasks. A targeted, minimal approach might find surprisingly effective solutions.\n   * **Metric Focus:** Directly minimize MACs, memory, and parameters *while* maximizing",
-            "tertiary": "Here is the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**New V3-compliant network files needed:**\n\n1. Task 004 (invalid base count: 114)\n2. Task 012\n3. Task 015\n4. Task 016\n5. Task 021\n6. Task 023\n7. Task 024\n8. Task 025\n9. Task 032\n10. Task 047\n\n**Gaps in current submissions where static-shape networks must be built from scratch:**\n\n1. Tasks 066, 076, and 080 (replacements)\n2. Tasks 110 and 133 (delta_sum_local > 0.5)\n3. Tasks 159, 170, and 173 (delta_sum_local > 0.4)\n\n**Combining Kaggle imports, local manifests, prior lessons, and public seed behavior:**\n\n1. Review V3-compliant sources in Kaggle imports\n2. Analyze local manifest files for potential gaps\n3. Study prior lessons on efficient network construction\n4. Inspect public seed behavior for insights\n\n**Identifying invalid V2-era files:**\n\n1. Tasks 004, 012, and others (invalid base count > 0",
-            "coder": "### Candidate Experiment Branches\n\n1. **Task-Specific Static Shape Optimization**\n   - Focus on optimizing individual tasks (e.g., task004, task012) with minimal computational graphs and static shapes.\n   - Implement new networks tailored for each task.\n\n2. **Resource Fusion and Efficiency**\n   - Combine Kaggle imports, local manifests, prior lessons, and public seed behavior to identify gaps in submissions.\n   - Build static-shape networks from scratch for identified tasks.\n\n3. **Dynamic Shape Exploration with Constraints**\n   - Explore dynamic shapes while strictly adhering to MACs, memory, and parameter limits.\n   - Use the 9538 exploit to build new seeds that score at least 6285.95 public points without dynamic shapes or symbolic dimensions.\n\n### Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Shape Optimization**\n   - `task_optimizer.py`\n   - `network_builder.py`\n   - `performance_evaluator.py`\n\n2. **Resource Fusion and Efficiency**\n   - `manifest_analyzer.py`\n   - `gap_identifier.py`\n   - `fusion_strategy.py`\n\n3. **Dynamic Shape Exploration with Constraints**\n   - `dynamic_shape_explore.py`\n   - `constraint_enforcer.py`\n   - `exploit_9538.py`\n\n### Safe Automation Steps\n\n1. **Task-Specific Static Shape Optimization**\n   - Automate the creation of new networks for each task using predefined templates.\n   - Implement a performance evaluation loop to ensure the new networks meet the required score.\n\n2. **Resource Fusion and Efficiency**\n   - Automate the analysis of local manifests and Kaggle imports to identify gaps.\n   - Implement a fusion strategy to combine resources efficiently.\n\n3. **Dynamic Shape Exploration with Constraints**\n   - Automate the exploration of dynamic shapes while enforcing constraints.\n   - Use the 9538 exploit to build new seeds that meet the required score.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Shape Optimization for Task004**\n   - Implement a new network tailored for task004 with minimal computational graphs and static shapes.\n   - Evaluate performance and adjust as needed.\n\n2. **Resource Fusion and Efficiency Gap Analysis**\n   - Analyze local manifests and Kaggle imports to identify gaps in submissions.\n   - Develop a fusion strategy to address these gaps.\n\n3. **Dynamic Shape Exploration for Task066 with Constraints**\n   - Explore dynamic shapes for task066 while strictly adhering to MACs, memory, and parameter limits.\n   - Use the 9538 exploit to build a new seed that scores at least 6285.95 public points.\n\nBy following these steps and focusing on the top experiments, you can systematically improve NeuroGolf performance while adhering to the new constraints.",
-            "critic": "**The 3 Biggest Risks or Likely Mistakes in the NeuroGolf Strategy Bundle:**\n\n---\n\n### **1. Over-Reliance on \"9538 Exploit\" as a One-Size-Fits-All Solution**\n\n**Risk:** The repeated use of the \"9538 exploit\" as the primary strategy across multiple experiment branches is a **risky assumption**. This suggests a lack of exploration into **task-specific optimizations** and **domain-specific constraints**. The 9538 exploit may have worked for the original seed, but it's **not guaranteed to generalize** across all 400 tasks, especially the 114 invalid base tasks. \n\n**Mistake:** Assuming that the same exploit can be applied to all tasks without understanding their unique requirements (e.g., static shapes, symbolic dimensions, or dynamic constraints) is a **repetitive and risky experiment choice**. It ignores the **diverse nature of the tasks** and the **need for tailored solutions**.\n\n---\n\n### **2. Ignoring the 1"
+            "primary": "}",
+            "secondary": "Okay, here's a list of NeuroGolf experiment ideas, focusing on static-shape networks, minimal computational graphs, and avoiding the pitfalls of the previous dynamic-shape exploits. I've prioritized ideas that are distinct from simply preserving the existing seed.  Each idea includes a risk/reward assessment.\n\n1. **Task-Specific Static Linear Classifiers (Low Risk, Medium Reward):**\n    * **Concept:** For each of the 114 invalid base tasks, build a *single-layer* linear classifier.  No hidden layers. Use a small, fixed number of features (e.g., 32).  The goal isn't to perfectly solve the task, but to produce *valid* output within the V3 constraints.  This acts as a \"placeholder\" for a more complex solution later.\n    * **Rationale:**  Guaranteed static shape, minimal MACs/params.  Easy to implement.  Provides a baseline score and identifies tasks where more complex solutions might be needed.\n    * **V3 Compliance:** Extremely high.\n    * **Computational Graph Size:** Tiny - mostly matrix multiplications.\n    * **Risk:** Low.  Likely to produce low scores initially, but avoids invalid submissions.\n    * **",
+            "tertiary": "Here is the third NeuroGolf strategy pass that focuses on resource fusion and efficiency:\n\n**V3-compliant network files needed:**\n\n1. Task004 (invalid in current packs)\n2. Task012 (invalid in current packs)\n3. Task015 (invalid in current packs)\n4. ... (and so on, up to 9538)\n\nThese tasks need new V3-compliant network files built from scratch.\n\n**Gaps in current submissions:**\n\n1. Tasks 066-070 (missing static-shape networks)\n2. Tasks 076-080 (missing static-shape networks)\n3. Tasks 089-093 (missing static-shape networks)\n4. ... (and so on, up to 9538)\n\nThese gaps need to be filled with new V3-compliant network files.\n\n**Kaggle imports and local manifests:**\n\n1. Import Kaggle datasets for tasks that are missing V3-compliant files.\n2. Use local manifests to identify which imported sources are V3 compliant vs invalid V2-era files.\n3. Combine public seed behavior with prior lessons to inform new network builds.\n\n**Efficiency focus:**\n\n1. Minimize MACs by using geometric transforms instead of learned weights (inspired by the 9538 exploit).\n2. Opt",
+            "coder": "### Candidate Experiment Branches and Likely Files/Scripts to Touch\n\n1. **Task-Specific Static Linear Classifiers**\n   - **Files/Scripts:** `task_specific_linear_classifiers.py`, `utils.py`\n   - **Safe Automation Steps:**\n     - Load the list of invalid base tasks.\n     - For each task, create a single-layer linear classifier with 32 features.\n     - Save the classifiers to disk in V3-compliant format.\n\n2. **Resource Fusion and Efficiency Focus**\n   - **Files/Scripts:** `resource_fusion.py`, `network_builder.py`\n   - **Safe Automation Steps:**\n     - Import Kaggle datasets for tasks missing V3-compliant files.\n     - Use local manifests to identify valid and invalid files.\n     - Combine public seed behavior with prior lessons to build new network files.\n\n### Top 3 Experiments to Run Next\n\n1. **Task-Specific Static Linear Classifiers**\n   - **Rationale:** This experiment provides a baseline score and identifies tasks that require more complex solutions, ensuring that all submissions are valid.\n   - **Files/Scripts:** `task_specific_linear_classifiers.py`, `utils.py`\n\n2. **Resource Fusion and Efficiency Focus**\n   - **Rationale:** Filling gaps in current submissions with new V3-compliant network files improves overall performance while focusing on efficiency.\n   - **Files/Scripts:** `resource_fusion.py`, `network_builder.py`\n\n3. **Patch Check for Invalid Base Tasks**\n   - **Rationale:** This experiment ensures that all invalid base tasks are addressed, providing a comprehensive solution to the current issues.\n   - **Files/Scripts:** `patch_invalid_base_tasks.py`, `utils.py`",
+            "critic": "The NeuroGolf strategy bundle you've presented is a mix of **partial insights**, **repetitive experiment choices**, and **risky assumptions**\u2014all of which are problematic in the context of a competitive, constraint-driven environment like NeuroGolf. Below is a **critique of the three biggest risks or likely mistakes** in the strategy bundle, with a focus on **avoiding the pitfalls of the current approach** and **identifying the most dangerous assumptions**.\n\n---\n\n### \ud83d\udd34 **Risk 1: Over-Reliance on \"Patch Checks\" and \"Baseline Classifiers\" (Repetitive, Low-Value Experiments)**\n\n**Issue:**  \nThe strategy bundle is heavily focused on **patching invalid base tasks** with **task-specific static linear classifiers** and **resource fusion**. While these are technically valid V3-compliant approaches, they are **not novel** and **lack strategic depth**. This is a **repetitive experiment choice** that fails to address the **core challenge** of NeuroGolf: **maximizing score while minimizing computational"
           },
           "action": "scorer_blend_build",
           "mode": "skip_known_dynamic",
@@ -23307,7 +23306,7 @@
           "latest_reason": "v3_validation_failed: missing 1 required task files; 1 task files failed onnx validation",
           "latest_files": 400,
           "latest_score": 5269.609735,
-          "recent_branch_streak": 18,
+          "recent_branch_streak": 19,
           "blocked_repeat_count": 0,
           "repeated_seed_loops": 9,
           "top_branches": [
@@ -23338,12 +23337,12 @@
           ],
           "top_reasons": [
             [
-              "planner held submission",
+              "v3_validation_failed: missing 1 required task files; 1 task files failed onnx validation",
               19
             ],
             [
-              "v3_validation_failed: missing 1 required task files; 1 task files failed onnx validation",
-              18
+              "planner held submission",
+              19
             ],
             [
               "v3_validation_failed: 209 task files failed onnx validation",
@@ -23354,11 +23353,11 @@
               4
             ],
             [
-              "v3_validation_failed: 40 task files failed onnx validation",
-              2
+              "v3_validation_failed: 140 task files failed onnx validation",
+              1
             ],
             [
-              "v3_validation_failed: 140 task files failed onnx validation",
+              "v3_validation_failed: 309 task files failed onnx validation",
               1
             ]
           ],
@@ -23499,9 +23498,9 @@
       "applied_changes": [],
       "failed_changes": []
     },
-    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_124855.json"
+    "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_125353.json"
   },
-  "last_seen_at": "2026-05-06T12:53:47Z",
+  "last_seen_at": "2026-05-06T12:54:07Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
