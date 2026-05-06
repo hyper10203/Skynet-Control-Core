@@ -9,11 +9,11 @@
     "pid": 9108,
     "created_at": "2026-05-06T11:04:10",
     "cpu_percent": 0.0,
-    "memory_mb": 0.0,
+    "memory_mb": 0.2,
     "status": "running",
     "status_updated_at": "2026-05-06T07:52:07Z",
     "status_stale": false,
-    "status_age_seconds": 25.379617
+    "status_age_seconds": 44.925405
   },
   "phase": "idle",
   "message": "Cycle complete",
@@ -24576,7 +24576,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_075207.json"
   },
-  "last_seen_at": "2026-05-06T07:52:32Z",
+  "last_seen_at": "2026-05-06T07:52:52Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
