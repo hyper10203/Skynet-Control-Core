@@ -18,6 +18,9 @@ import psutil
 import requests
 
 from core.config import (
+    AXIOMGRAPH_BRIDGE_LOOP_SECONDS,
+    AXIOMGRAPH_BRIDGE_PID_PATH,
+    AXIOMGRAPH_BRIDGE_STATUS_PATH,
     KAGGLE_CONFIG_DIR,
     MODEL_OPTIONS,
     MODEL_REGISTRY,
@@ -137,6 +140,56 @@ def daemon_status() -> dict:
         "status_updated_at": status_updated_at or None,
         "status_stale": stale,
         "status_age_seconds": stale_seconds,
+    }
+
+
+def read_bridge_status() -> dict:
+    if not AXIOMGRAPH_BRIDGE_STATUS_PATH.exists():
+        return {}
+    try:
+        return json.loads(AXIOMGRAPH_BRIDGE_STATUS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def bridge_daemon_status() -> dict:
+    pid = None
+    if AXIOMGRAPH_BRIDGE_PID_PATH.exists():
+        raw = AXIOMGRAPH_BRIDGE_PID_PATH.read_text(encoding="utf-8").strip()
+        pid = int(raw) if raw.isdigit() else None
+    status_payload = read_bridge_status()
+    status_updated_at = str(status_payload.get("updated_at", "")).strip()
+    loop_seconds = int(load_env_settings().get("AXIOMGRAPH_BRIDGE_LOOP_SECONDS", str(AXIOMGRAPH_BRIDGE_LOOP_SECONDS)))
+    stale_seconds = None
+    stale = False
+    if status_updated_at:
+        try:
+            stamp = datetime.fromisoformat(status_updated_at.replace("Z", "+00:00"))
+            stale_seconds = max(0.0, (datetime.now(stamp.tzinfo) - stamp).total_seconds())
+            stale = stale_seconds > max(180.0, float(loop_seconds * 3))
+        except Exception:
+            stale_seconds = None
+    if pid and psutil.pid_exists(pid):
+        proc = psutil.Process(pid)
+        return {
+            "running": True,
+            "pid": pid,
+            "created_at": datetime.fromtimestamp(proc.create_time()).isoformat(timespec="seconds"),
+            "cpu_percent": proc.cpu_percent(interval=0.1),
+            "memory_mb": round(proc.memory_info().rss / (1024 * 1024), 1),
+            "status": proc.status(),
+            "status_updated_at": status_updated_at or None,
+            "status_stale": stale,
+            "status_age_seconds": stale_seconds,
+            "loop_seconds": loop_seconds,
+        }
+    return {
+        "running": False,
+        "pid": pid,
+        "status_updated_at": status_updated_at or None,
+        "status_stale": stale,
+        "status_age_seconds": stale_seconds,
+        "loop_seconds": loop_seconds,
     }
 
 
@@ -565,6 +618,8 @@ def runtime_node_healthcheck() -> dict:
 def remote_bridge_status() -> dict:
     settings = bridge_settings()
     summary = runtime_node_summary()
+    bridge_loop = bridge_daemon_status()
+    env_settings = load_env_settings()
     return {
         "repo": settings["repo"],
         "branch": settings["branch"],
@@ -572,6 +627,8 @@ def remote_bridge_status() -> dict:
         "token_available": bridge_token_available(allow_cli=True),
         "node_id": summary.get("node_id"),
         "pairing_code": summary.get("pairing_code"),
+        "loop_seconds": int(env_settings.get("AXIOMGRAPH_BRIDGE_LOOP_SECONDS", str(AXIOMGRAPH_BRIDGE_LOOP_SECONDS))),
+        "bridge_daemon": bridge_loop,
     }
 
 
@@ -589,6 +646,77 @@ def list_remote_bridge_nodes() -> list[dict]:
 
 def queue_remote_bridge_command(node_id: str, action: str, args: dict | None = None) -> dict:
     return queue_runtime_node_command(node_id, action, args=args or {})
+
+
+def start_bridge_daemon(*, interval_seconds: int) -> dict:
+    update_env_settings({"AXIOMGRAPH_BRIDGE_LOOP_SECONDS": str(interval_seconds)})
+    current = bridge_daemon_status()
+    if current.get("running"):
+        return {
+            "ok": True,
+            "stdout": f"Runtime Node bridge already running with PID {current.get('pid')}",
+            "stderr": "",
+        }
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(PROJECT_ROOT / "start_runtime_node_bridge.ps1"),
+        "-IntervalSeconds",
+        str(max(15, int(interval_seconds))),
+    ]
+    reports_dir = AXIOMGRAPH_BRIDGE_STATUS_PATH.parent
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    launcher_out = reports_dir / "launcher.out.log"
+    launcher_err = reports_dir / "launcher.err.log"
+    stdout_handle = launcher_out.open("a", encoding="utf-8")
+    stderr_handle = launcher_err.open("a", encoding="utf-8")
+    subprocess.Popen(
+        command,
+        cwd=PROJECT_ROOT,
+        stdout=stdout_handle,
+        stderr=stderr_handle,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    stdout_handle.close()
+    stderr_handle.close()
+    return {
+        "ok": True,
+        "stdout": "Runtime Node bridge start requested in background.",
+        "stderr": "",
+    }
+
+
+def stop_bridge_daemon() -> dict:
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(PROJECT_ROOT / "stop_runtime_node_bridge.ps1"),
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    return {"ok": completed.returncode == 0, "stdout": completed.stdout, "stderr": completed.stderr}
+
+
+def restart_bridge_daemon_async(*, interval_seconds: int) -> dict:
+    update_env_settings({"AXIOMGRAPH_BRIDGE_LOOP_SECONDS": str(interval_seconds)})
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(PROJECT_ROOT / "restart_runtime_node_bridge.ps1"),
+        "-IntervalSeconds",
+        str(max(15, int(interval_seconds))),
+    ]
+    subprocess.Popen(command, cwd=PROJECT_ROOT)
+    return {
+        "ok": True,
+        "stdout": "Runtime Node bridge restart requested in background.",
+        "stderr": "",
+    }
 
 
 def run_single_cycle(*, allow_submit: bool, history: int, min_local_delta: float) -> dict:

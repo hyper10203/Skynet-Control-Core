@@ -33,6 +33,7 @@ from core.self_improvement import (
 )
 from core.runtime_control import (
     archive_skynet_clutter as archive_generated_clutter,
+    bridge_daemon_status,
     current_role_map,
     daemon_status,
     fetch_kaggle_targets,
@@ -59,10 +60,13 @@ from core.runtime_control import (
     process_remote_bridge_command,
     publish_remote_bridge_heartbeat,
     queue_remote_bridge_command,
+    restart_bridge_daemon_async,
     save_runtime_node_kaggle_credentials,
     save_runtime_node_settings,
     skynet_clutter_summary as generated_clutter_summary,
+    start_bridge_daemon,
     start_daemon,
+    stop_bridge_daemon,
     stop_daemon,
     sync_state,
     tail_log,
@@ -1251,7 +1255,7 @@ def render_dashboard() -> None:
         bridge_summary = remote_bridge_status()
     except Exception as e:
         st.warning(f"Failed to load remote bridge status: {e}")
-        bridge_summary = {}
+        bridge_summary = {"bridge_daemon": bridge_daemon_status()}
     
     try:
         remote_nodes = list_remote_bridge_nodes()
@@ -1607,11 +1611,51 @@ def render_dashboard() -> None:
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
         st.subheader("Node Bridge")
+        bridge_daemon = bridge_summary.get("bridge_daemon", {}) if isinstance(bridge_summary.get("bridge_daemon"), dict) else {}
         bridge_cols = st.columns(4)
         bridge_cols[0].metric("Bridge Repo", bridge_summary.get("repo") or "unset")
         bridge_cols[1].metric("Bridge Branch", bridge_summary.get("branch") or "unset")
         bridge_cols[2].metric("Token", "READY" if bridge_summary.get("token_available") else "MISSING")
         bridge_cols[3].metric("Remote Nodes", len(remote_nodes))
+
+        bridge_status_cols = st.columns(4)
+        bridge_status_cols[0].metric("Bridge Loop", "ONLINE" if bridge_daemon.get("running") else "OFFLINE")
+        bridge_status_cols[1].metric("Bridge PID", bridge_daemon.get("pid") or "n/a")
+        bridge_status_cols[2].metric("Bridge Interval", f"{bridge_summary.get('loop_seconds', 90)}s")
+        bridge_status_cols[3].metric("Bridge Status Age", fmt_value(bridge_daemon.get("status_age_seconds"), digits=0))
+        if bridge_daemon.get("status_updated_at"):
+            st.caption(
+                f"Bridge loop last synced at `{bridge_daemon.get('status_updated_at')}` with stale=`{bridge_daemon.get('status_stale', False)}`."
+            )
+
+        bridge_interval = st.number_input(
+            "Bridge loop interval (seconds)",
+            min_value=15,
+            max_value=3600,
+            step=15,
+            value=int(bridge_summary.get("loop_seconds", 90) or 90),
+            key="runtime_bridge_loop_seconds",
+        )
+        bridge_service_actions = st.columns(3)
+        if bridge_service_actions[0].button("Start Bridge Loop", width="stretch"):
+            set_action_result(
+                "Runtime Node bridge loop start requested.",
+                start_bridge_daemon(interval_seconds=int(bridge_interval)),
+            )
+            st.rerun()
+        if bridge_service_actions[1].button("Restart Bridge Loop", width="stretch"):
+            set_action_result(
+                "Runtime Node bridge loop restart requested.",
+                restart_bridge_daemon_async(interval_seconds=int(bridge_interval)),
+            )
+            st.rerun()
+        if bridge_service_actions[2].button("Stop Bridge Loop", width="stretch"):
+            set_action_result(
+                "Runtime Node bridge loop stop requested.",
+                stop_bridge_daemon(),
+            )
+            st.rerun()
+
         bridge_actions = st.columns(3)
         if bridge_actions[0].button("Publish Heartbeat", width="stretch"):
             set_action_result(

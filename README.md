@@ -77,6 +77,8 @@ The first remote-control bridge uses a dedicated GitHub branch as a transport la
 
 That gives us outbound-only remote control without exposing your laptop directly to the internet.
 
+The local Runtime Node can also keep a small bridge loop running in the background. That loop publishes fresh heartbeats, polls for remote commands, and lets the hosted Control Center steer the machine even when the Streamlit dashboard is closed.
+
 ## System Layout
 
 ```mermaid

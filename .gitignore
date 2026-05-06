@@ -11,6 +11,7 @@ memory/operator_note.txt
 memory/distillation_plan.json
 memory/seed_controls.json
 outputs/neurogolf/
+outputs/runtime_node_bridge/
 outputs/distillation/
 outputs/generated/
 outputs/reports/
