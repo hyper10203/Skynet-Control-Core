@@ -38,6 +38,7 @@ from core.runtime_control import (
     daemon_status,
     fetch_kaggle_targets,
     healthcheck,
+    launch_openclaude_session,
     latest_team_name,
     leaderboard_rank_for_team,
     list_imported_kaggle_sources,
@@ -1512,6 +1513,16 @@ def render_dashboard() -> None:
                 value=str(node_summary.get("device_label") or ""),
                 key="runtime_node_label",
             )
+            backend_options = ["openclaude", "ollama"]
+            current_backend = str(node_summary.get("llm_backend") or "ollama").strip().lower()
+            if current_backend not in backend_options:
+                backend_options.append(current_backend)
+            llm_backend_value = st.selectbox(
+                "Primary LLM backend",
+                options=backend_options,
+                index=backend_options.index(current_backend),
+                key="runtime_node_llm_backend",
+            )
             remote_url_value = st.text_input(
                 "Remote control center URL",
                 value=str(node_summary.get("remote_control_url") or ""),
@@ -1537,6 +1548,21 @@ def render_dashboard() -> None:
                 value=str(node_summary.get("ollama_model_dir") or ""),
                 key="runtime_node_ollama_model_dir",
             )
+            openclaude_bin_value = st.text_input(
+                "OpenClaude binary",
+                value=str(node_summary.get("openclaude_bin") or ""),
+                key="runtime_node_openclaude_bin",
+            )
+            openclaude_provider_value = st.text_input(
+                "OpenClaude provider",
+                value=str(node_summary.get("openclaude_provider") or "ollama"),
+                key="runtime_node_openclaude_provider",
+            )
+            openclaude_default_model_value = st.text_input(
+                "OpenClaude default model",
+                value=str(node_summary.get("openclaude_default_model") or ""),
+                key="runtime_node_openclaude_default_model",
+            )
             if st.button("Save Runtime Node Settings", width="stretch"):
                 set_action_result(
                     "Runtime node settings saved.",
@@ -1544,8 +1570,12 @@ def render_dashboard() -> None:
                         device_label=node_label_value,
                         remote_control_url=remote_url_value,
                         workspace_root=workspace_root_value,
+                        llm_backend=llm_backend_value,
                         ollama_base_url=ollama_base_value,
                         ollama_model_dir=ollama_model_dir_value,
+                        openclaude_bin=openclaude_bin_value,
+                        openclaude_provider=openclaude_provider_value,
+                        openclaude_default_model=openclaude_default_model_value,
                         kaggle_config_dir=kaggle_dir_value,
                     ),
                 )
@@ -1635,9 +1665,23 @@ def render_dashboard() -> None:
 
         path_cols = st.columns(3)
         path_cols[0].metric("Workspace", "FOUND" if node_summary.get("workspace_exists") else "MISSING")
-        path_cols[1].metric("Ollama Models Dir", "FOUND" if node_summary.get("ollama_model_dir_exists") else "UNSET")
+        path_cols[1].metric("LLM Backend", str(node_summary.get("llm_backend") or "ollama").upper())
         path_cols[2].metric("Remote Center", "SET" if node_summary.get("remote_control_url") else "UNSET")
         path_cols[2].caption(str(node_summary.get("remote_control_url") or "No remote control URL configured."))
+
+        llm_runtime_cols = st.columns(3)
+        llm_runtime_cols[0].metric("Ollama Models Dir", "FOUND" if node_summary.get("ollama_model_dir_exists") else "UNSET")
+        llm_runtime_cols[1].metric("OpenClaude Binary", "READY" if node_summary.get("openclaude_bin_exists") else "MISSING")
+        llm_runtime_cols[2].metric("OpenClaude Model", str(node_summary.get("openclaude_default_model") or "unset"))
+        llm_runtime_actions = st.columns(2)
+        if llm_runtime_actions[0].button("Probe Local LLM Stack", width="stretch"):
+            set_action_result("Runtime node healthcheck finished.", runtime_node_healthcheck())
+            st.rerun()
+        if llm_runtime_actions[1].button("Launch OpenClaude", width="stretch"):
+            set_action_result(
+                "OpenClaude launch requested.",
+                launch_openclaude_session(model=str(node_summary.get("openclaude_default_model") or "")),
+            )
 
         st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
         st.subheader("Node Bridge")

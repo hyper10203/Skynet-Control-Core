@@ -85,6 +85,17 @@ For day-to-day local use, start the full machine-facing surface with:
 - `start_runtime_node.ps1 -StartAutonomy -AllowSubmit` when you want the local solver loop live immediately
 - `stop_runtime_node.ps1` to stop the dashboard, bridge, and local daemon together
 
+### OpenClaude on top of Ollama
+
+This Runtime Node can also use OpenClaude as the local prompting layer while still routing model calls through Ollama.
+
+- official OpenClaude install: `npm install -g @gitlawb/openclaude`
+- local launch helper: `start_openclaude_ollama.ps1`
+- recommended config:
+  - `LLM_BACKEND=openclaude`
+  - `OPENCLAUDE_PROVIDER=ollama`
+  - `OPENCLAUDE_DEFAULT_MODEL=qwen2.5-coder:latest`
+
 ## System Layout
 
 ```mermaid

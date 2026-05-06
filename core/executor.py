@@ -1,14 +1,42 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import subprocess
 from time import sleep
 
 import requests
 
-from core.config import OLLAMA_BASE_URL, OLLAMA_KEEP_ALIVE, REQUEST_TIMEOUT
+from core.config import (
+    LLM_BACKEND,
+    OLLAMA_BASE_URL,
+    OLLAMA_KEEP_ALIVE,
+    OPENCLAUDE_BIN,
+    OPENCLAUDE_EFFORT,
+    OPENCLAUDE_PROVIDER,
+    PROJECT_ROOT,
+    REQUEST_TIMEOUT,
+)
 
 
 OLLAMA_URL = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
+
+
+def _openclaude_command(model: str, prompt: str, system: str | None = None) -> list[str]:
+    command = [
+        OPENCLAUDE_BIN,
+        "--provider",
+        OPENCLAUDE_PROVIDER,
+        "--model",
+        str(model).strip(),
+        "--bare",
+        "--effort",
+        OPENCLAUDE_EFFORT,
+        "--print",
+    ]
+    if system:
+        command.extend(["--system-prompt", str(system)])
+    command.append(prompt)
+    return command
 
 
 def _needs_explicit_no_think(model: str) -> bool:
@@ -57,6 +85,25 @@ def ask(
     last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
+            if LLM_BACKEND == "openclaude":
+                completed = subprocess.run(
+                    _openclaude_command(model, prompt, system=system),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    cwd=PROJECT_ROOT,
+                    timeout=timeout or REQUEST_TIMEOUT,
+                )
+                if completed.returncode != 0:
+                    raise RuntimeError(
+                        f"OpenClaude returned {completed.returncode} for model '{model}': {str(completed.stderr or completed.stdout).strip()}"
+                    )
+                text = str(completed.stdout or "").strip()
+                if not text:
+                    raise RuntimeError(f"OpenClaude returned an empty response for model '{model}'.")
+                return text
+
             payload = {
                 "model": model,
                 "prompt": prompt,

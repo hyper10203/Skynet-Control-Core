@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import shutil
 import socket
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,9 +13,13 @@ from core.config import (
     AXIOMGRAPH_REMOTE_CONTROL_URL,
     AXIOMGRAPH_RUNTIME_NODE_STATE_PATH,
     KAGGLE_CONFIG_DIR,
+    LLM_BACKEND,
     NEUROGOLF_PROJECT_ROOT,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL_DIR,
+    OPENCLAUDE_BIN,
+    OPENCLAUDE_DEFAULT_MODEL,
+    OPENCLAUDE_PROVIDER,
     PROJECT_ROOT,
 )
 from core.env_settings import load_env_settings, update_env_settings
@@ -113,8 +118,12 @@ def save_runtime_node_settings(
     device_label: str,
     remote_control_url: str,
     workspace_root: str,
+    llm_backend: str,
     ollama_base_url: str,
     ollama_model_dir: str,
+    openclaude_bin: str,
+    openclaude_provider: str,
+    openclaude_default_model: str,
     kaggle_config_dir: str,
 ) -> dict[str, str]:
     update_env_settings(
@@ -122,8 +131,12 @@ def save_runtime_node_settings(
             "AXIOMGRAPH_NODE_LABEL": str(device_label).strip(),
             "AXIOMGRAPH_REMOTE_CONTROL_URL": str(remote_control_url).strip(),
             "NEUROGOLF_PROJECT_ROOT": str(workspace_root).strip(),
+            "LLM_BACKEND": str(llm_backend).strip().lower() or "ollama",
             "OLLAMA_BASE_URL": str(ollama_base_url).strip(),
             "OLLAMA_MODEL_DIR": str(ollama_model_dir).strip(),
+            "OPENCLAUDE_BIN": str(openclaude_bin).strip(),
+            "OPENCLAUDE_PROVIDER": str(openclaude_provider).strip().lower() or "ollama",
+            "OPENCLAUDE_DEFAULT_MODEL": str(openclaude_default_model).strip(),
             "KAGGLE_CONFIG_DIR": str(kaggle_config_dir).strip(),
         }
     )
@@ -179,10 +192,18 @@ def load_runtime_node_summary() -> dict:
         NEUROGOLF_PROJECT_ROOT,
     )
     workspace_root = str(workspace_root_path)
+    llm_backend = str(env_settings.get("LLM_BACKEND") or LLM_BACKEND).strip().lower() or "ollama"
     ollama_base_url = str(env_settings.get("OLLAMA_BASE_URL") or OLLAMA_BASE_URL).strip()
     raw_ollama_model_dir = str(env_settings.get("OLLAMA_MODEL_DIR") or OLLAMA_MODEL_DIR).strip()
     ollama_model_dir_path = _resolve_local_path(raw_ollama_model_dir, PROJECT_ROOT / ".local" / "models") if raw_ollama_model_dir else None
     ollama_model_dir = str(ollama_model_dir_path) if ollama_model_dir_path else ""
+    raw_openclaude_bin = str(env_settings.get("OPENCLAUDE_BIN") or OPENCLAUDE_BIN).strip()
+    openclaude_bin_path = Path(raw_openclaude_bin) if raw_openclaude_bin else Path()
+    openclaude_bin_exists = bool(raw_openclaude_bin) and (
+        openclaude_bin_path.exists() if openclaude_bin_path.is_absolute() else bool(shutil.which(raw_openclaude_bin))
+    )
+    openclaude_provider = str(env_settings.get("OPENCLAUDE_PROVIDER") or OPENCLAUDE_PROVIDER).strip().lower() or "ollama"
+    openclaude_default_model = str(env_settings.get("OPENCLAUDE_DEFAULT_MODEL") or OPENCLAUDE_DEFAULT_MODEL).strip()
     remote_control_url = str(
         env_settings.get("AXIOMGRAPH_REMOTE_CONTROL_URL")
         or state.get("remote_control_url")
@@ -204,9 +225,14 @@ def load_runtime_node_summary() -> dict:
         "paired_at": state.get("paired_at", ""),
         "workspace_root": workspace_root,
         "workspace_exists": workspace_root_path.exists(),
+        "llm_backend": llm_backend,
         "ollama_base_url": ollama_base_url,
         "ollama_model_dir": ollama_model_dir,
         "ollama_model_dir_exists": bool(ollama_model_dir_path) and bool(ollama_model_dir_path.exists()),
+        "openclaude_bin": raw_openclaude_bin,
+        "openclaude_bin_exists": openclaude_bin_exists,
+        "openclaude_provider": openclaude_provider,
+        "openclaude_default_model": openclaude_default_model,
         "kaggle_config_dir": str(kaggle_dir),
         "kaggle_json_path": str(kaggle_json_path),
         "kaggle_json_exists": kaggle_json_path.exists(),

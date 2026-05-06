@@ -22,6 +22,7 @@ from core.config import (
     AXIOMGRAPH_BRIDGE_PID_PATH,
     AXIOMGRAPH_BRIDGE_STATUS_PATH,
     KAGGLE_CONFIG_DIR,
+    LLM_BACKEND,
     MODEL_OPTIONS,
     MODEL_REGISTRY,
     NEUROGOLF_AUTONOMY_LOG_PATH,
@@ -34,6 +35,9 @@ from core.config import (
     NEUROGOLF_SEED_CONTROLS_PATH,
     NEUROGOLF_SYNC_STATE_PATH,
     OLLAMA_BASE_URL,
+    OPENCLAUDE_BIN,
+    OPENCLAUDE_DEFAULT_MODEL,
+    OPENCLAUDE_PROVIDER,
     PROJECT_ROOT,
 )
 from core.env_settings import load_env_settings, update_env_settings
@@ -72,6 +76,14 @@ def _normalize_csv_row(row: dict) -> dict:
 def _python_exe() -> str:
     candidate = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
     return str(candidate) if candidate.exists() else "python"
+
+
+def _openclaude_exe() -> str:
+    env_settings = load_env_settings()
+    configured = str(env_settings.get("OPENCLAUDE_BIN") or OPENCLAUDE_BIN).strip()
+    if configured:
+        return configured
+    return "openclaude.cmd"
 
 
 def _kaggle_cli_prefix() -> list[str]:
@@ -544,16 +556,24 @@ def save_runtime_node_settings(
     device_label: str,
     remote_control_url: str,
     workspace_root: str,
+    llm_backend: str,
     ollama_base_url: str,
     ollama_model_dir: str,
+    openclaude_bin: str,
+    openclaude_provider: str,
+    openclaude_default_model: str,
     kaggle_config_dir: str,
 ) -> dict:
     summary = save_runtime_node_settings_impl(
         device_label=device_label,
         remote_control_url=remote_control_url,
         workspace_root=workspace_root,
+        llm_backend=llm_backend,
         ollama_base_url=ollama_base_url,
         ollama_model_dir=ollama_model_dir,
+        openclaude_bin=openclaude_bin,
+        openclaude_provider=openclaude_provider,
+        openclaude_default_model=openclaude_default_model,
         kaggle_config_dir=kaggle_config_dir,
     )
     return {
@@ -587,6 +607,12 @@ def rotate_runtime_node_pairing_token() -> dict:
 def runtime_node_healthcheck() -> dict:
     summary = runtime_node_summary()
     checks: dict[str, dict[str, str | bool]] = {}
+    llm_backend = str(summary.get("llm_backend") or LLM_BACKEND).strip().lower() or "ollama"
+
+    checks["llm_backend"] = {
+        "ok": llm_backend in {"ollama", "openclaude"},
+        "detail": llm_backend,
+    }
 
     workspace_root = Path(str(summary.get("workspace_root") or ""))
     checks["workspace_root"] = {
@@ -615,6 +641,42 @@ def runtime_node_healthcheck() -> dict:
             "detail": f"{ollama_base_url} | {exc}",
         }
 
+    if llm_backend == "openclaude":
+        openclaude_bin = str(summary.get("openclaude_bin") or _openclaude_exe()).strip()
+        resolved_openclaude = shutil.which(openclaude_bin) if not Path(openclaude_bin).is_absolute() else openclaude_bin
+        if Path(openclaude_bin).is_absolute():
+            binary_ok = Path(openclaude_bin).exists()
+        else:
+            binary_ok = bool(resolved_openclaude)
+        checks["openclaude_binary"] = {
+            "ok": binary_ok,
+            "detail": str(resolved_openclaude or openclaude_bin),
+        }
+        if binary_ok:
+            probe_model = str(summary.get("openclaude_default_model") or MODEL_REGISTRY.get("coder") or OPENCLAUDE_DEFAULT_MODEL).strip()
+            probe_provider = str(summary.get("openclaude_provider") or OPENCLAUDE_PROVIDER).strip().lower() or "ollama"
+            try:
+                completed = subprocess.run(
+                    [str(resolved_openclaude or openclaude_bin), "--provider", probe_provider, "--model", probe_model, "--bare", "--print", "Reply with exactly OK"],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    cwd=PROJECT_ROOT,
+                    timeout=90,
+                )
+                stdout = str(completed.stdout or "").strip()
+                stderr = str(completed.stderr or "").strip()
+                checks["openclaude_probe"] = {
+                    "ok": completed.returncode == 0 and stdout.startswith("OK"),
+                    "detail": f"{probe_provider} | {probe_model} | rc={completed.returncode} | stdout={stdout[:80]} | stderr={stderr[:120]}",
+                }
+            except Exception as exc:
+                checks["openclaude_probe"] = {
+                    "ok": False,
+                    "detail": f"{probe_provider} | {probe_model} | {exc}",
+                }
+
     remote_control_url = str(summary.get("remote_control_url") or "").strip()
     if remote_control_url:
         try:
@@ -642,6 +704,31 @@ def runtime_node_healthcheck() -> dict:
         "stderr": "" if ok else "One or more runtime-node checks failed.",
         "checks": checks,
         "summary": summary,
+    }
+
+
+def launch_openclaude_session(*, model: str = "", prompt: str = "") -> dict:
+    summary = runtime_node_summary()
+    provider = str(summary.get("openclaude_provider") or OPENCLAUDE_PROVIDER).strip().lower() or "ollama"
+    chosen_model = str(model or summary.get("openclaude_default_model") or MODEL_REGISTRY.get("coder") or OPENCLAUDE_DEFAULT_MODEL).strip()
+    command = [
+        "powershell",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(PROJECT_ROOT / "start_openclaude_ollama.ps1"),
+        "-Provider",
+        provider,
+        "-Model",
+        chosen_model,
+    ]
+    if prompt.strip():
+        command.extend(["-Prompt", prompt.strip()])
+    subprocess.Popen(command, cwd=PROJECT_ROOT)
+    return {
+        "ok": True,
+        "stdout": f"OpenClaude launch requested with provider `{provider}` and model `{chosen_model}`.",
+        "stderr": "",
     }
 
 

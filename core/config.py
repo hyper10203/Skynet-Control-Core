@@ -16,6 +16,18 @@ OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
 OLLAMA_MODEL_DIR = os.getenv("OLLAMA_MODEL_DIR", "").strip()
 
 
+def _default_openclaude_bin() -> str:
+    candidates = []
+    appdata = os.getenv("APPDATA", "").strip()
+    if appdata:
+        candidates.append(Path(appdata) / "npm" / "openclaude.cmd")
+    candidates.append(Path.home() / "AppData" / "Roaming" / "npm" / "openclaude.cmd")
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return "openclaude.cmd"
+
+
 def _env_int(name: str, default: int) -> int:
     return int(os.getenv(name, str(default)))
 
@@ -40,6 +52,11 @@ MODEL_REGISTRY = {
 }
 
 PREFER_DIRECT_ORCHESTRATION = os.getenv("ARC_PREFER_DIRECT_ORCHESTRATION", "1").strip().lower() not in {"0", "false", "no"}
+LLM_BACKEND = os.getenv("LLM_BACKEND", "ollama").strip().lower() or "ollama"
+OPENCLAUDE_BIN = os.getenv("OPENCLAUDE_BIN", _default_openclaude_bin()).strip()
+OPENCLAUDE_PROVIDER = os.getenv("OPENCLAUDE_PROVIDER", "ollama").strip().lower() or "ollama"
+OPENCLAUDE_DEFAULT_MODEL = os.getenv("OPENCLAUDE_DEFAULT_MODEL", os.getenv("ARC_MODEL_CODER", "qwen2.5-coder")).strip()
+OPENCLAUDE_EFFORT = os.getenv("OPENCLAUDE_EFFORT", "medium").strip().lower() or "medium"
 
 MODEL_OPTIONS = {
     "orchestrator": {
