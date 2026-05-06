@@ -22,6 +22,7 @@ from core.config import (
     NEUROGOLF_SEED_CONTROLS_PATH,
     NEUROGOLF_SYNC_STATE_PATH,
 )
+from core.env_settings import load_env_settings
 from core.memory import load_memory, replace_source_patterns, save_memory
 from core.kaggle_competition_data import (
     is_competition_data_ready,
@@ -521,8 +522,15 @@ def _recent_cycle_patterns(limit: int = 12) -> dict:
 
 def _submission_history(limit: int = NEUROGOLF_AUTONOMY_MAX_HISTORY) -> list[dict]:
     api_rows: list[dict] = []
-    kaggle_json = NEUROGOLF_PROJECT_ROOT / "kaggle.json"
-    if kaggle_json.exists() and "KAGGLE_CONFIG_DIR" not in os.environ:
+    env_settings = load_env_settings()
+    configured_dir = Path(str(env_settings.get("KAGGLE_CONFIG_DIR") or "")).expanduser()
+    if configured_dir and not configured_dir.is_absolute():
+        configured_dir = (Path(__file__).resolve().parents[1] / configured_dir).resolve()
+    kaggle_json = configured_dir / "kaggle.json" if configured_dir else Path()
+    legacy_json = NEUROGOLF_PROJECT_ROOT / "kaggle.json"
+    if kaggle_json.exists():
+        os.environ["KAGGLE_CONFIG_DIR"] = str(configured_dir)
+    elif legacy_json.exists() and "KAGGLE_CONFIG_DIR" not in os.environ:
         os.environ["KAGGLE_CONFIG_DIR"] = str(NEUROGOLF_PROJECT_ROOT)
 
     if KaggleApi is not None:

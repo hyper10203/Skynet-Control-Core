@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.backup.*
 .venv/
+.local/
 .env
 archive/
 data/neurogolf-2026/

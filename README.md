@@ -55,6 +55,16 @@ This repo is built to be a proper control surface:
 - Model-role editor with profile loading, installed-model detection, and context auto-fill
 - Direct orchestrator chat plus a separate fast operator chat lane
 - `.env`-backed runtime settings so loop timing and submission controls stay stable across restarts
+- Runtime Node tab for local-only Kaggle auth, Ollama/model paths, pairing code rotation, and installed-engine health checks
+
+## Runtime Split
+
+The system is now moving toward a two-part shape:
+
+- **AxiomGraph Runtime Node**: the installed local engine that owns Kaggle auth, Ollama, local model paths, the NeuroGolf workspace, daemon execution, and submissions
+- **AxiomGraph Control Center**: the remote-facing website and hosted portal that owns landing/login/device views, telemetry, command history, and operator control
+
+This keeps the powerful parts local while still giving you a clean remote surface.
 
 ## System Layout
 

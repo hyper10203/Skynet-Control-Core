@@ -18,6 +18,7 @@ import psutil
 import requests
 
 from core.config import (
+    KAGGLE_CONFIG_DIR,
     MODEL_OPTIONS,
     MODEL_REGISTRY,
     NEUROGOLF_AUTONOMY_LOG_PATH,
@@ -40,6 +41,12 @@ from core.distillation import (
 )
 from core.maintenance import archive_clutter, find_clutter
 from core.model_profiles import default_context_for_model
+from core.runtime_node import (
+    load_runtime_node_summary,
+    rotate_pair_token,
+    save_kaggle_credentials,
+    save_runtime_node_settings as save_runtime_node_settings_impl,
+)
 
 
 def _normalize_csv_row(row: dict) -> dict:
@@ -72,8 +79,15 @@ def _kaggle_cli_prefix() -> list[str]:
 
 def _kaggle_auth_env() -> dict[str, str]:
     env = os.environ.copy()
-    kaggle_json = NEUROGOLF_PROJECT_ROOT / "kaggle.json"
+    env_settings = load_env_settings()
+    configured_dir = Path(str(env_settings.get("KAGGLE_CONFIG_DIR") or KAGGLE_CONFIG_DIR))
+    if not configured_dir.is_absolute():
+        configured_dir = (PROJECT_ROOT / configured_dir).resolve()
+    kaggle_json = configured_dir / "kaggle.json"
+    legacy_json = NEUROGOLF_PROJECT_ROOT / "kaggle.json"
     if kaggle_json.exists():
+        env["KAGGLE_CONFIG_DIR"] = str(configured_dir)
+    elif legacy_json.exists():
         env["KAGGLE_CONFIG_DIR"] = str(NEUROGOLF_PROJECT_ROOT)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
@@ -428,6 +442,116 @@ def healthcheck() -> dict:
     command = [_python_exe(), str(PROJECT_ROOT / "healthcheck.py")]
     completed = subprocess.run(command, capture_output=True, text=True, cwd=PROJECT_ROOT)
     return {"ok": completed.returncode == 0, "stdout": completed.stdout, "stderr": completed.stderr}
+
+
+def runtime_node_summary() -> dict:
+    return load_runtime_node_summary()
+
+
+def save_runtime_node_settings(
+    *,
+    device_label: str,
+    remote_control_url: str,
+    workspace_root: str,
+    ollama_base_url: str,
+    ollama_model_dir: str,
+    kaggle_config_dir: str,
+) -> dict:
+    summary = save_runtime_node_settings_impl(
+        device_label=device_label,
+        remote_control_url=remote_control_url,
+        workspace_root=workspace_root,
+        ollama_base_url=ollama_base_url,
+        ollama_model_dir=ollama_model_dir,
+        kaggle_config_dir=kaggle_config_dir,
+    )
+    return {
+        "ok": True,
+        "stdout": "Runtime node settings saved.",
+        "stderr": "",
+        "summary": summary,
+    }
+
+
+def save_runtime_node_kaggle_credentials(*, username: str, key: str, config_dir: str) -> dict:
+    result = save_kaggle_credentials(username=username, key=key, config_dir=config_dir)
+    return {
+        "ok": True,
+        "stdout": f"Kaggle credentials saved to {result.get('kaggle_json_path')}",
+        "stderr": "",
+        "result": result,
+    }
+
+
+def rotate_runtime_node_pairing_token() -> dict:
+    summary = rotate_pair_token()
+    return {
+        "ok": True,
+        "stdout": "Runtime node pairing token rotated.",
+        "stderr": "",
+        "summary": summary,
+    }
+
+
+def runtime_node_healthcheck() -> dict:
+    summary = runtime_node_summary()
+    checks: dict[str, dict[str, str | bool]] = {}
+
+    workspace_root = Path(str(summary.get("workspace_root") or ""))
+    checks["workspace_root"] = {
+        "ok": workspace_root.exists(),
+        "detail": str(workspace_root),
+    }
+
+    kaggle_json = Path(str(summary.get("kaggle_json_path") or ""))
+    checks["kaggle_credentials"] = {
+        "ok": kaggle_json.exists(),
+        "detail": str(kaggle_json),
+    }
+
+    ollama_base_url = str(summary.get("ollama_base_url") or "").rstrip("/")
+    try:
+        response = requests.get(f"{ollama_base_url}/api/tags", timeout=10)
+        response.raise_for_status()
+        model_count = len(response.json().get("models", []))
+        checks["ollama"] = {
+            "ok": True,
+            "detail": f"{ollama_base_url} | {model_count} models visible",
+        }
+    except Exception as exc:
+        checks["ollama"] = {
+            "ok": False,
+            "detail": f"{ollama_base_url} | {exc}",
+        }
+
+    remote_control_url = str(summary.get("remote_control_url") or "").strip()
+    if remote_control_url:
+        try:
+            response = requests.get(remote_control_url, timeout=10)
+            checks["remote_control_center"] = {
+                "ok": response.status_code < 500,
+                "detail": f"{remote_control_url} | HTTP {response.status_code}",
+            }
+        except Exception as exc:
+            checks["remote_control_center"] = {
+                "ok": False,
+                "detail": f"{remote_control_url} | {exc}",
+            }
+    else:
+        checks["remote_control_center"] = {
+            "ok": False,
+            "detail": "No remote control URL configured.",
+        }
+
+    ok = all(bool(item.get("ok")) for item in checks.values())
+    lines = [f"{name}: {'OK' if item.get('ok') else 'FAIL'} | {item.get('detail')}" for name, item in checks.items()]
+    return {
+        "ok": ok,
+        "stdout": "\n".join(lines),
+        "stderr": "" if ok else "One or more runtime-node checks failed.",
+        "checks": checks,
+        "summary": summary,
+    }
 
 
 def run_single_cycle(*, allow_submit: bool, history: int, min_local_delta: float) -> dict:

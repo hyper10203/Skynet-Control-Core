@@ -13,6 +13,7 @@ load_dotenv(PROJECT_ROOT / ".env", override=True)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 REQUEST_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "600"))
 OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
+OLLAMA_MODEL_DIR = os.getenv("OLLAMA_MODEL_DIR", "").strip()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -168,3 +169,23 @@ SKYNET_DISTILLATION_PLAN_PATH = _env_path(
     "SKYNET_DISTILLATION_PLAN_PATH",
     PROJECT_ROOT / "memory" / "distillation_plan.json",
 )
+AXIOMGRAPH_LOCAL_DIR = _env_path(
+    "AXIOMGRAPH_LOCAL_DIR",
+    PROJECT_ROOT / ".local",
+)
+KAGGLE_CONFIG_DIR = _env_path(
+    "KAGGLE_CONFIG_DIR",
+    AXIOMGRAPH_LOCAL_DIR / "kaggle",
+)
+AXIOMGRAPH_RUNTIME_NODE_STATE_PATH = _env_path(
+    "AXIOMGRAPH_RUNTIME_NODE_STATE_PATH",
+    AXIOMGRAPH_LOCAL_DIR / "runtime_node.json",
+)
+AXIOMGRAPH_REMOTE_CONTROL_URL = os.getenv(
+    "AXIOMGRAPH_REMOTE_CONTROL_URL",
+    "https://axiomgraph-operations-core.streamlit.app",
+).strip()
+AXIOMGRAPH_NODE_LABEL = os.getenv(
+    "AXIOMGRAPH_NODE_LABEL",
+    os.getenv("COMPUTERNAME", "AxiomGraph Runtime Node"),
+).strip()

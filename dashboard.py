@@ -48,15 +48,20 @@ from core.runtime_control import (
     recent_reports,
     restart_daemon_async,
     remote_access_endpoints,
+    rotate_runtime_node_pairing_token,
     run_single_cycle,
     save_operator_note,
     save_distillation_settings,
     save_imported_seed_controls,
+    save_runtime_node_kaggle_credentials,
+    save_runtime_node_settings,
     skynet_clutter_summary as generated_clutter_summary,
     start_daemon,
     stop_daemon,
     sync_state,
     tail_log,
+    runtime_node_healthcheck,
+    runtime_node_summary,
 )
 
 
@@ -1226,6 +1231,12 @@ def render_dashboard() -> None:
     except Exception as e:
         st.warning(f"Failed to load endpoints: {e}")
         endpoints = []
+    
+    try:
+        node_summary = runtime_node_summary()
+    except Exception as e:
+        st.warning(f"Failed to load runtime node summary: {e}")
+        node_summary = {}
 
     daemon_badge_class = "badge-online" if daemon.get("running") else "badge-offline"
     daemon_badge_text = "ONLINE" if daemon.get("running") else "OFFLINE"
@@ -1331,8 +1342,8 @@ def render_dashboard() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_overview, tab_portal, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
-        ["Overview", "Portal", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
+    tab_overview, tab_portal, tab_node, tab_control, tab_models, tab_neurogolf, tab_reports, tab_arc, tab_chat = st.tabs(
+        ["Overview", "Portal", "Runtime Node", "Control", "Models", "NeuroGolf", "Reports", "ARC Visualizer", "Orchestrator Chat"]
     )
 
     with tab_overview:
@@ -1442,6 +1453,136 @@ def render_dashboard() -> None:
                 latest_report=latest_report,
                 submission_policy=submission_policy,
             )
+
+    with tab_node:
+        st.markdown('<div class="panel"><h4>Runtime Node</h4><div class="panel-copy">This machine is the local engine. Keep Kaggle auth, model paths, Ollama, and filesystem access here, then let the remote control center steer it from the outside.</div></div>', unsafe_allow_html=True)
+
+        node_cols = st.columns(4)
+        node_cols[0].metric("Node Label", node_summary.get("device_label") or "unset")
+        node_cols[1].metric("Node ID", str(node_summary.get("node_id") or "unset")[:12])
+        node_cols[2].metric("Pairing Code", node_summary.get("pairing_code") or "unset")
+        node_cols[3].metric("Kaggle Auth", "READY" if node_summary.get("kaggle_json_exists") else "MISSING")
+
+        config_left, config_right = st.columns([1.0, 1.0])
+        with config_left:
+            st.subheader("Local Runtime Settings")
+            node_label_value = st.text_input(
+                "Node label",
+                value=str(node_summary.get("device_label") or ""),
+                key="runtime_node_label",
+            )
+            remote_url_value = st.text_input(
+                "Remote control center URL",
+                value=str(node_summary.get("remote_control_url") or ""),
+                key="runtime_node_remote_url",
+            )
+            workspace_root_value = st.text_input(
+                "NeuroGolf workspace root",
+                value=str(node_summary.get("workspace_root") or ""),
+                key="runtime_node_workspace_root",
+            )
+            kaggle_dir_value = st.text_input(
+                "Kaggle config directory",
+                value=str(node_summary.get("kaggle_config_dir") or ""),
+                key="runtime_node_kaggle_dir",
+            )
+            ollama_base_value = st.text_input(
+                "Ollama base URL",
+                value=str(node_summary.get("ollama_base_url") or ""),
+                key="runtime_node_ollama_base",
+            )
+            ollama_model_dir_value = st.text_input(
+                "Ollama model directory",
+                value=str(node_summary.get("ollama_model_dir") or ""),
+                key="runtime_node_ollama_model_dir",
+            )
+            if st.button("Save Runtime Node Settings", width="stretch"):
+                set_action_result(
+                    "Runtime node settings saved.",
+                    save_runtime_node_settings(
+                        device_label=node_label_value,
+                        remote_control_url=remote_url_value,
+                        workspace_root=workspace_root_value,
+                        ollama_base_url=ollama_base_value,
+                        ollama_model_dir=ollama_model_dir_value,
+                        kaggle_config_dir=kaggle_dir_value,
+                    ),
+                )
+                st.rerun()
+
+        with config_right:
+            st.subheader("Pairing Payload")
+            st.json(
+                {
+                    "node_id": node_summary.get("node_id"),
+                    "device_label": node_summary.get("device_label"),
+                    "remote_control_url": node_summary.get("remote_control_url"),
+                    "pairing_code": node_summary.get("pairing_code"),
+                    "pair_token": node_summary.get("pair_token"),
+                    "registered_operator_email": node_summary.get("registered_operator_email"),
+                }
+            )
+            st.caption(
+                "The remote control center should pair this machine using the node ID plus pair token. Keep the token local and rotate it whenever you rebind the device."
+            )
+            rotate_cols = st.columns([1, 1])
+            if rotate_cols[0].button("Rotate Pairing Token", width="stretch"):
+                set_action_result(
+                    "Runtime node pairing token rotated.",
+                    rotate_runtime_node_pairing_token(),
+                )
+                st.rerun()
+            if rotate_cols[1].button("Run Runtime Node Healthcheck", width="stretch"):
+                set_action_result(
+                    "Runtime node healthcheck finished.",
+                    runtime_node_healthcheck(),
+                )
+                st.rerun()
+
+        st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+        st.subheader("Kaggle Credentials")
+        st.caption(
+            f"Local Kaggle auth is stored under `{node_summary.get('kaggle_json_path', 'n/a')}` so the cloud portal never needs your competition key."
+        )
+        kaggle_cols = st.columns([1, 1])
+        kaggle_username_value = kaggle_cols[0].text_input(
+            "Kaggle username",
+            value=str(node_summary.get("kaggle_username") or ""),
+            key="runtime_node_kaggle_username",
+        )
+        kaggle_key_value = kaggle_cols[1].text_input(
+            "Kaggle key",
+            value="",
+            type="password",
+            key="runtime_node_kaggle_key",
+            placeholder="Paste your Kaggle API key here",
+        )
+        kaggle_actions = st.columns([1, 1, 2])
+        if kaggle_actions[0].button("Save Kaggle Auth", width="stretch"):
+            if not kaggle_username_value.strip() or not kaggle_key_value.strip():
+                st.error("Enter both a Kaggle username and key before saving.")
+            else:
+                set_action_result(
+                    "Kaggle credentials saved.",
+                    save_runtime_node_kaggle_credentials(
+                        username=kaggle_username_value,
+                        key=kaggle_key_value,
+                        config_dir=kaggle_dir_value,
+                    ),
+                )
+                st.rerun()
+        if kaggle_actions[1].button("Re-run Generic Healthcheck", width="stretch"):
+            set_action_result("Healthcheck finished.", healthcheck())
+            st.rerun()
+        kaggle_actions[2].caption(
+            "Installed-app flow: save Kaggle auth locally, point to your Ollama models, then pair this node to the remote site for telemetry and commands."
+        )
+
+        path_cols = st.columns(3)
+        path_cols[0].metric("Workspace", "FOUND" if node_summary.get("workspace_exists") else "MISSING")
+        path_cols[1].metric("Ollama Models Dir", "FOUND" if node_summary.get("ollama_model_dir_exists") else "UNSET")
+        path_cols[2].metric("Remote Center", "SET" if node_summary.get("remote_control_url") else "UNSET")
+        path_cols[2].caption(str(node_summary.get("remote_control_url") or "No remote control URL configured."))
 
     with tab_control:
         st.markdown('<div class="panel"><h4>Autonomy Controls</h4><div class="panel-copy">Start, stop, restart, run a single cycle, inject steering, and import Kaggle sources.</div></div>', unsafe_allow_html=True)
