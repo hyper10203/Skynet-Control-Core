@@ -6,10 +6,10 @@
   "status": "executed",
   "requested_at": "2026-05-06T06:59:40Z",
   "requested_by": "remote-control-center",
-  "executed_at": "2026-05-06T07:05:50Z",
+  "executed_at": "2026-05-06T07:05:51Z",
   "result": {
     "ok": true,
-    "stdout": "Ollama base URL: http://localhost:11434\norchestrator: qwen3:8b -> ok | options={'num_ctx': 8192, 'temperature': 0.2, 'num_predict': 220}\noperator_fast: qwen2.5 -> ok | options={'num_ctx': 4096, 'temperature': 0.15, 'num_predict': 180}\nreasoning_primary: mistral:7b-text-fp16 -> ok | options={'num_ctx': 8192, 'temperature': 0.3, 'num_predict': 350}\nreasoning_secondary: gemma3:12b -> ok | options={'num_ctx': 16384, 'temperature': 0.5, 'num_predict': 260}\nreasoning_tertiary: llama3 -> ok | options={'num_ctx': 4096, 'temperature': 0.35, 'num_predict': 260}\ncoder: qwen2.5-coder -> ok | options={'num_ctx': 8192, 'temperature': 0.2, 'num_predict': 700}\ncritic: qwen3:8b -> ok | options={'num_ctx': 6144, 'temperature': 0.2, 'num_predict': 220}\n",
+    "stdout": "workspace_root: OK | D:\\E into D(12-15-2025_15-33)\\coding 25-26\\neurogolf_arc_system\nkaggle_credentials: OK | E:\\LLM\\New project_main\\arc-agent-system\\.local\\kaggle\\kaggle.json\nollama: OK | http://localhost:11434 | 6 models visible\nremote_control_center: OK | https://axiomgraph-operations-core.streamlit.app | HTTP 200",
     "stderr": ""
   }
 }
