@@ -1,0 +1,9 @@
+{
+  "id": "cmd_20260506T065940Z_1c16222d",
+  "node_id": "c3e9e4b8ff0a38d4",
+  "action": "run_healthcheck",
+  "args": {},
+  "status": "pending",
+  "requested_at": "2026-05-06T06:59:40Z",
+  "requested_by": "remote-control-center"
+}
