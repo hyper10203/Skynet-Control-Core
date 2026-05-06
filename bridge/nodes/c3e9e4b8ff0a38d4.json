@@ -16,7 +16,7 @@
     "status": "running",
     "status_updated_at": "2026-05-06T19:38:19Z",
     "status_stale": false,
-    "status_age_seconds": 5.075592
+    "status_age_seconds": 23.822396
   },
   "phase": "reasoning",
   "message": "Querying coder: qwen2.5-coder",
@@ -1336,7 +1336,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_193502.json"
   },
-  "last_seen_at": "2026-05-06T19:38:24Z",
+  "last_seen_at": "2026-05-06T19:38:42Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
