@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import subprocess
 from time import sleep
 
@@ -21,8 +22,8 @@ from core.config import (
 OLLAMA_URL = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
 
 
-def _openclaude_command(model: str, prompt: str, system: str | None = None) -> list[str]:
-    command = [
+def _openclaude_command(model: str) -> list[str]:
+    return [
         OPENCLAUDE_BIN,
         "--provider",
         OPENCLAUDE_PROVIDER,
@@ -32,7 +33,59 @@ def _openclaude_command(model: str, prompt: str, system: str | None = None) -> l
         "--effort",
         OPENCLAUDE_EFFORT,
         "--print",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
     ]
+
+
+def _openclaude_input(prompt: str, system: str | None = None) -> str:
+    if system and str(system).strip():
+        merged = f"SYSTEM INSTRUCTIONS:\n{str(system).strip()}\n\nUSER REQUEST:\n{prompt}"
+    else:
+        merged = prompt
+    payload = {
+        "type": "user",
+        "message": {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": merged,
+                }
+            ],
+        },
+    }
+    return json.dumps(payload) + "\n"
+
+
+def _parse_openclaude_output(stdout: str) -> str:
+    assistant_text = ""
+    result_text = ""
+    for raw_line in str(stdout or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        event_type = str(payload.get("type") or "")
+        if event_type == "assistant":
+            message = payload.get("message") or {}
+            content = message.get("content") or []
+            text_parts = [
+                str(item.get("text", "")).strip()
+                for item in content
+                if isinstance(item, dict) and str(item.get("type")) == "text"
+            ]
+            if text_parts:
+                assistant_text = "\n".join(part for part in text_parts if part).strip()
+        if event_type == "result" and str(payload.get("subtype") or "") == "success":
+            result_text = str(payload.get("result", "")).strip()
+    return result_text or assistant_text
     if system:
         command.extend(["--system-prompt", str(system)])
     command.append(prompt)
@@ -87,7 +140,8 @@ def ask(
         try:
             if LLM_BACKEND == "openclaude":
                 completed = subprocess.run(
-                    _openclaude_command(model, prompt, system=system),
+                    _openclaude_command(model),
+                    input=_openclaude_input(prompt, system=system),
                     capture_output=True,
                     text=True,
                     encoding="utf-8",
@@ -99,7 +153,7 @@ def ask(
                     raise RuntimeError(
                         f"OpenClaude returned {completed.returncode} for model '{model}': {str(completed.stderr or completed.stdout).strip()}"
                     )
-                text = str(completed.stdout or "").strip()
+                text = _parse_openclaude_output(completed.stdout)
                 if not text:
                     raise RuntimeError(f"OpenClaude returned an empty response for model '{model}'.")
                 return text

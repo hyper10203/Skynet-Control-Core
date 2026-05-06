@@ -96,6 +96,13 @@ This Runtime Node can also use OpenClaude as the local prompting layer while sti
   - `OPENCLAUDE_PROVIDER=ollama`
   - `OPENCLAUDE_DEFAULT_MODEL=qwen2.5-coder:latest`
 
+Right now the safest competition path is still:
+
+- `LLM_BACKEND=ollama` for the autonomous solver loop
+- OpenClaude as an optional local operator surface for short/manual sessions
+
+Why: short probes can be faster through OpenClaude, but the local-first solver path still needs the raw Ollama transport as the most trustworthy baseline while longer planner runs are being hardened.
+
 ## System Layout
 
 ```mermaid
