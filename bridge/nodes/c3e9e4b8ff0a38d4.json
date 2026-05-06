@@ -13,7 +13,7 @@
     "status": "running",
     "status_updated_at": "2026-05-06T08:57:05Z",
     "status_stale": false,
-    "status_age_seconds": 127.902474
+    "status_age_seconds": 146.958552
   },
   "phase": "building",
   "message": "Building splice from latest_artem_part2 (open splice)",
@@ -5594,7 +5594,7 @@
     },
     "_path": "E:\\LLM\\New project_main\\arc-agent-system\\outputs\\neurogolf\\cycle_20260506_085502.json"
   },
-  "last_seen_at": "2026-05-06T08:59:13Z",
+  "last_seen_at": "2026-05-06T08:59:32Z",
   "pairing_code": "C3E9E4-7F0R2S",
   "bridge_branch": "runtime-node-bridge"
 }
